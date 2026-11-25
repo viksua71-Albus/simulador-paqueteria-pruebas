@@ -113,7 +113,7 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
     <div class="legend">🏍️ ALBA · 🟡 recogida · 🔴 entrega · <span id="lgRt">mapa de referencia</span></div></div>
   <div id="panel">
     <header>
-      <h1>📦 Simulador <span>Paquetería</span> España<span class="ver">v1.2.2</span></h1>
+      <h1>📦 Simulador <span>Paquetería</span> España<span class="ver">v1.2.3</span></h1>
       <div class="sim-badge">⚠️ SIMULACIÓN: personas, pagos, comida y diálogos ficticios · lugares reales (OSM)</div>
       <div class="hrow">
         <span class="pill alba">👩🏍️ Repartidora: <b>ALBA</b></span>
@@ -159,7 +159,7 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
           <input type="file" id="fileImp" accept=".json,application/json" hidden>
           <div class="acts"><button class="btn b-bad b-sm" id="btnReset">🗑️ Borrar partida</button></div>
         </div>
-        <div class="sec"><h2><span>ℹ️ Datos</span></h2><div class="sub">Municipios, calles, polígonos, tiendas, restaurantes y estaciones reales de OpenStreetMap. El mapa y la ruta (OSRM) son una referencia: ALBA va en moto y el trayecto lo haces tú. Naves, app de comida, personas, viviendas, mensajes e incidencias <b>simulados</b>. Las esperas (portero, timbre, cocina, ascensor, escaleras, cita y la vuelta a la moto) van a tiempo real.</div></div>
+        <div class="sec"><h2><span>ℹ️ Datos</span></h2><div class="sub">Municipios, calles, polígonos, tiendas, restaurantes y estaciones reales de OpenStreetMap. El mapa y la ruta (OSRM) son una referencia: ALBA va en moto y el trayecto lo haces tú en ETS2. Naves, app de comida, personas, viviendas, mensajes e incidencias <b>simulados</b>. Tú marcas con un botón cuando has hecho algo (ir al portal, subir, bajar, volver a la moto). Las esperas de terceros (portero, timbre, cocina, «espera 5 min», cita) van a tiempo real 1:1.</div></div>
       </div>
     </div>
   </div>
@@ -168,7 +168,7 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
 <div id="toast"></div>
 <script>
 "use strict";
-const APP_VER="1.2.2";
+const APP_VER="1.2.3";
 const HTTP=location.protocol==="http:"||location.protocol==="https:";
 if(HTTP){for(const [rel,href] of [["manifest","manifest.webmanifest"],["icon","icons/icon-192.png"],["apple-touch-icon","icons/icon-192.png"]]){const l=document.createElement("link");l.rel=rel;l.href=href;document.head.appendChild(l);}
   if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});}
@@ -446,7 +446,7 @@ async function makeOffer(){
       else if(type==="particular"){
         const sts=L.filter(p=>p.k==="street"&&hav(dest,p.c)<=14&&p.n!==place.n);const sp=pick(sts.length?sts:L.filter(p=>p.k==="street"||p.k==="town"));
         const sender=makeRcp(sp,makeHousing(sp),ts);
-        pu={kind:"particular",name:`Particular: ${sender.name}`,line:fmtAddr(sp.n,sp.t),c:sp.c.slice(),real:true,src:"calle real (OSM); remitente simulado",sender};
+        pu={kind:"particular",name:`Particular: ${sender.name}`,line:fmtAddr(sp.n,sp.t),c:sp.c.slice(),real:true,src:"calle real (OSM); remitente simulado",sender,housing:makeHousing(sp)};
       }else if(type==="recogida"){
         const dep=pickInd(L,dest,co);
         pu={kind:"home_ret",name:`Casa de ${rcp.name}`,line:addr.line,c:dest.slice(),real:addr.real,src:addr.src};
@@ -463,7 +463,7 @@ async function makeOffer(){
   let deadline=null,win=null;
   if(type==="urgente")deadline=Math.round(now+totalMin+rndI(15,35));
   if(type==="comida")deadline=Math.round(now+totalMin+rndI(10,20));
-  if(type==="cita"){const s=Math.ceil((now+totalMin+rndI(10,80))/30)*30;win=[s,s+120];if(f.citaEarly)win=[Math.round(now+totalMin+40),Math.round(now+totalMin+160)];}
+  if(type==="cita"){const s=Math.ceil((now+totalMin+rndI(10,80))/30)*30;win=[s,s+120];if(f.citaEarly)win=[Math.round(now+totalMin+40),Math.round(now+totalMin+160)];if(f.citaOpen)win=[Math.round(now-20),Math.round(now+120)];}
   const pay=attempt>1?r2(COS[co].base+Math.min(totalKm,25)*.1):calcPay(co,type,pkg,totalKm);
   CUR={stage:"offer",co,type,pkg,place,housing,rcp,addr,dest,pu,puDone:false,R1,R2,totalKm,totalMin,pay,deadline,win,attempt,isRepeat,pudo,ts:slot(),log:[],tip:0,rating:5,inc:null,
     msg:planMsg(type,housing,pkg),incident:planInc(type),willAnswer:true};
@@ -481,7 +481,7 @@ const MSG_TXT={bajando:"Estoy bajando, ¡espérame en el portal! 🏃",espera5:"
 // ---------- Tramos de referencia (el trayecto lo hace el jugador; sin barra ni espera) ----------
 function arrPuLabel(){const k=CUR.pu&&CUR.pu.kind,ty=CUR.type;if(ty==="comida"||k==="food")return "📍 He llegado al restaurante";if(k==="shop")return "📍 He llegado a la tienda";if(k==="ind")return "📍 He llegado a la nave";return "📍 He llegado a la recogida";}
 function arrDelLabel(){if(CUR.type==="recogida")return "📍 He llegado a la nave";if(CUR.type==="pudo")return "📍 He llegado al punto de recogida";return "📍 He llegado a la entrega";}
-function beginLeg(isPickup){startLiveClock();CUR.stage=isPickup?"leg_pu":"leg_del";CUR.legAt=wallNow();if(isPickup)CUR.msgShown=false;save();mapShow(CUR);render();}
+function beginLeg(isPickup){startLiveClock();CUR.stage=isPickup?"leg_pu":"leg_del";CUR.legAt=wallNow();if(isPickup)CUR.msgShown=false;else{CUR.alba=null;CUR.log=[];CUR.wasUp=false;CUR.atPickupHome=false;CUR.bellNeigh=false;}save();mapShow(CUR);render();}
 function accept(){if(!CUR||CUR.stage!=="offer")return;snd("ok");beginLeg(true);}
 function reject(){commitLiveClock();CUR=null;mapClear();toast("Pedido rechazado");save();render();}
 function maybeShowApproachMsg(){if(!CUR||CUR.msgShown||!CUR.msg||CUR.stage!=="leg_del"||!CUR.legAt)return;
@@ -493,64 +493,81 @@ function showPickupTalk(){
   else if(CUR.pu.kind==="shop")CUR.puLine=`«¡Hola ALBA! Este es el pedido de ${CUR.pu.name}. Cabe bien en el baúl.»`;
   else CUR.puLine=`«Hola, aquí tienes el paquete bien cerrado. Va para ${CUR.rcp.nom}.»`;
   snd("ok");say(CUR.puLine);CUR.puDone=true;startReturnToMoto("leg");}
-function startHandlePu(){const hs=F().handleSec!=null?F().handleSec:rndI(5,10);
-  if(hs>0){CUR.stage="handle_pu";CUR.handleSec=hs;save();render();startWait("handle",hs);}else showPickupTalk();}
-function arrivePickup(){if(!CUR||CUR.stage!=="leg_pu")return;S.pos=CUR.pu.c.slice();mapAlba();
-  if(CUR.type==="recogida"){CUR.puDone=true;mapShow(CUR);startDoor();return;}
-  if(CUR.type==="comida"){
-    const prep=F().prepSec!=null?F().prepSec:(Math.random()<.65?rndI(8,40):0);
-    if(prep>0){CUR.stage="food_prep";CUR.prepSec=prep;CUR.prepLine="«¡Hola ALBA! Está saliendo de cocina, espera un momento…»";say(CUR.prepLine);save();render();startWait("prep",prep);return;}
-  }
-  startHandlePu();}
+function startHandlePu(){CUR.stage="handle_pu";save();render();}
+function arrivePickup(){if(!CUR||CUR.stage!=="leg_pu")return;S.pos=CUR.pu.c.slice();mapAlba();mapShow(CUR);
+  if(CUR.type==="recogida"||(CUR.pu&&CUR.pu.kind==="particular"))CUR.atPickupHome=true;
+  startApproach();}
 function arriveDelivery(){if(!CUR||!(CUR.stage==="leg_del"||CUR.stage==="pickup"||CUR.stage==="ready_ret"))return;
-  CUR.puDone=true;S.pos=CUR.dest.slice();mapAlba();mapShow(CUR);CUR.arriveAt=clockNow();hdrUI();
+  CUR.puDone=true;CUR.atPickupHome=false;S.pos=CUR.dest.slice();mapAlba();mapShow(CUR);CUR.arriveAt=clockNow();hdrUI();
   if(CUR.type==="urgente"&&clockNow()>CUR.deadline)CUR.late=true;
   if(CUR.type==="comida"&&(F().foodCold||clockNow()>CUR.deadline)){CUR.late=true;CUR.cold=true;}
-  if(CUR.type==="pudo"||CUR.type==="recogida"){CUR.stage="pudo";return render();}
-  if(CUR.type==="cita"&&clockNow()<CUR.win[0]){CUR.stage="cita_early";return render();}
-  if(CUR.type==="cita"&&clockNow()>CUR.win[1])CUR.late=true;
-  startDoor();}
-function startDoor(){
+  if(CUR.type==="cita"&&CUR.win&&clockNow()<CUR.win[0]){CUR.stage="cita_early";return render();}
+  if(CUR.type==="cita"&&CUR.win&&clockNow()>CUR.win[1])CUR.late=true;
+  startApproach();}
+function doorHousing(){if(CUR&&CUR.atPickupHome&&CUR.pu&&CUR.pu.housing)return CUR.pu.housing;return (CUR&&CUR.housing)||{};}
+function approachKind(){
+  if(CUR.atPickupHome)return isPisoH(doorHousing())?"piso":"casa";
+  if(!CUR.puDone){
+    const k=CUR.pu&&CUR.pu.kind;
+    if(k==="particular"||k==="home_ret")return isPisoH(doorHousing())?"piso":"casa";
+    return "local";
+  }
+  if(CUR.type==="pudo"||CUR.type==="recogida")return "local";
+  if(isPisoH(CUR.housing))return "piso";
+  return "casa";
+}
+function approachBtn(){
+  const k=approachKind(),h=doorHousing(),pk=CUR.pu&&CUR.pu.kind;
+  if(k==="piso")return "🚶 Ir al portal";
+  if(k==="casa")return h.gate?"🚶 Ir a la verja":"🚶 Ir a la puerta";
+  if(!CUR.puDone){
+    if(CUR.type==="comida"||pk==="food")return "🚶 Ir al restaurante";
+    if(pk==="shop")return "🚶 Ir a la tienda";
+    return "🚶 Ir a la nave";
+  }
+  return CUR.type==="pudo"?"🚶 Ir al punto de recogida":"🚶 Ir a la nave";
+}
+function startApproach(){CUR.stage="approach";save();render();}
+function doApproach(){
+  if(approachKind()==="local"){
+    if(!CUR.puDone){
+      if(CUR.type==="comida"||(CUR.pu&&CUR.pu.kind==="food")){
+        const prep=F().prepSec!=null?F().prepSec:(Math.random()<.65?rndI(8,40):0);
+        if(prep>0){CUR.stage="food_prep";CUR.prepSec=prep;CUR.prepLine="«¡Hola ALBA! Está saliendo de cocina, espera un momento…»";say(CUR.prepLine);save();render();startWait("prep",prep);return;}
+      }
+      startHandlePu();return;
+    }
+    CUR.stage="pudo";return render();
+  }
   if(CUR.incident==="direccion"&&!CUR.incDone){CUR.stage="addr";return render();}
-  if(CUR.msg==="bajando"){CUR.stage="conv";CUR.log=[{who:CUR.rcp.name+" · sale al portal",cls:isFlirt(CUR.rcp)?"flirt":"",txt:"«¡Ya estoy! Perdona, he bajado corriendo.» "+openLine(true)}];say(CUR.log[0].txt);return render();}
-  if(CUR.msg==="vecino2"){CUR.stage="neigh";CUR.neigh=neighbour(true,"2.º");return render();}
-  if(CUR.msg==="porteria"&&CUR.housing.porter){CUR.stage="porter_msg";return render();}
-  if(CUR.msg==="buzon"){CUR.stage="buzon_msg";return render();}
   if(CUR.msg==="espera5"){CUR.stage="wait5";return render();}
-  if(CUR.housing.looseDog)snd("dog");
+  if(doorHousing().looseDog)snd("dog");
   CUR.stage="door";render();}
+function startDoor(){if(CUR.msg==="espera5"){CUR.stage="wait5";return render();}if(doorHousing().looseDog)snd("dog");CUR.stage="door";render();}
 
 // ---------- Portero, ascensor, escaleras y timbre (tiempo real 1:1) ----------
 let LAST_IC=0,LAST_BELL=0;
-function icWaitSec(){if(F().icSec!=null)return F().icSec;const e=CUR.rcp.edad;let a=4,b=16;if(e>=65){a=8;b=22;}else if(CUR.rcp.ch.k==="prisa"){a=3;b=9;}else if(Math.random()<.16){a=2;b=4;}
+function icWaitSec(){if(F().icSec!=null)return F().icSec;const r=CUR&&CUR.rcp||{},e=r.edad||45;let a=4,b=16;if(e>=65){a=8;b=22;}else if(r.ch&&r.ch.k==="prisa"){a=3;b=9;}else if(Math.random()<.16){a=2;b=4;}
   let s=rndI(a,b);if(s===LAST_IC)s=s<b?s+1:s-1;LAST_IC=s;return s;}
-function bellWaitSec(){if(F().waitSec!=null)return F().waitSec;const e=CUR.rcp.edad;let a=5,b=24;if(e>=65){a=10;b=32;}else if(CUR.ts==="siesta"){a=9;b=36;}else if(CUR.rcp.ch.k==="prisa"){a=4;b=12;}else if(Math.random()<.15){a=3;b=5;}
-  let s=rndI(a,b);if(s===LAST_BELL||s===CUR.icSec)s=s<b?s+1:s-1;LAST_BELL=s;return s;}
+function bellWaitSec(){if(F().waitSec!=null)return F().waitSec;const r=CUR&&CUR.rcp||{},e=r.edad||45;let a=5,b=24;if(e>=65){a=10;b=32;}else if(CUR&&CUR.ts==="siesta"){a=9;b=36;}else if(r.ch&&r.ch.k==="prisa"){a=4;b=12;}else if(Math.random()<.15){a=3;b=5;}
+  let s=rndI(a,b);if(s===LAST_BELL||(CUR&&s===CUR.icSec))s=s<b?s+1:s-1;LAST_BELL=s;return s;}
 function liftSec(fl){if(F().liftSec!=null)return F().liftSec;return 4+fl*4;}
 function stairsSec(fl){if(F().stairsSec!=null)return F().stairsSec;return fl*15;}
 const WAIT_END={
   prep:()=>startHandlePu(),
-  handle:()=>showPickupTalk(),
   ic:endIcWait,
   bell:endBellWait,
-  lift:()=>{CUR.wasUp=true;CUR.stage="flat_door";save();render();},
-  stairs:()=>{CUR.wasUp=true;CUR.stage="flat_door";save();render();},
   cita:endCitaWait,
-  wait5:endWait5,
-  ret_moto:endReturnStep
+  wait5:endWait5
 };
 function waitLeft(){if(!CUR||!CUR.wait)return 0;return Math.max(0,CUR.wait.sec-elapsedSec(CUR.wait.t0));}
 function paintWait(){if(!CUR||!CUR.wait)return;const sec=CUR.wait.sec||1,left=waitLeft(),p=clamp(1-left/sec,0,1);
-  const b=$("wBar");if(b)b.style.width=Math.round(p*100)+"%";const c=$("wClk");if(!c)return;
-  const rk=CUR.retStep&&CUR.retStep.k,flDown=CUR.retStep&&CUR.retStep.fl;
-  if(CUR.stage==="lift_wait"||CUR.stage==="stairs_wait"){const fl=CUR.housing.floor||3,per=sec/Math.max(1,fl),floor=Math.max(1,Math.min(fl,Math.floor((sec-left)/per)+1));c.textContent=fmtMMSS(left)+" · "+floor+".º";}
-  else if(CUR.stage==="ret_moto"&&(rk==="lift_down"||rk==="stairs_down")&&flDown){const per=sec/Math.max(1,flDown),floor=Math.max(1,flDown-Math.floor((sec-left)/per));c.textContent=fmtMMSS(left)+" · "+floor+".º";}
-  else c.textContent=fmtMMSS(left);}
+  const b=$("wBar");if(b)b.style.width=Math.round(p*100)+"%";const c=$("wClk");if(c)c.textContent=fmtMMSS(left);}
 function tickWait(){if(!CUR||!CUR.wait)return;paintWait();if(waitLeft()<=0){const kind=CUR.wait.kind,fn=WAIT_END[kind];CUR.wait=null;save();if(fn)fn();}}
 function startWait(kind,sec){CUR.wait={kind,sec,t0:wallNow()};save();startClockTick();startLiveClock();paintWait();clearInterval(WT);WT=setInterval(()=>tickWait(),200);}
 function resumeWait(){if(!CUR||!CUR.wait)return;startClockTick();startLiveClock();tickWait();if(CUR&&CUR.wait){clearInterval(WT);WT=setInterval(()=>tickWait(),200);}}
-function endIcWait(){const f=F(),s=CUR.icSec||0;
-  if(CUR.housing.porter&&(f.porter||(!f.noPorter&&Math.random()<.36))){CUR.stage="porter";CUR.icMsg="«Portería, dígame. Si quiere déjemelo aquí, o suba en el ascensor.»";}
+function endIcWait(){const f=F(),s=CUR.icSec||0,h=doorHousing();
+  if(h.porter&&(f.porter||(!f.noPorter&&Math.random()<.36))){CUR.stage="porter";CUR.icMsg="«Portería, dígame. Si quiere déjemelo aquí, o suba en el ascensor.»";}
   else if(CUR.willAnswer||f.intercomOpens||Math.random()<.32){
     const ask=f.icAsk!=null?f.icAsk:Math.random()<.35;
     if(ask){CUR.stage="ic_ask";CUR.icMsg="«¿Diga? ¿Quién es?»";}
@@ -558,16 +575,15 @@ function endIcWait(){const f=F(),s=CUR.icSec||0;
   }else{CUR.stage="nohome";CUR.icMsg=`Nadie contesta al portero automático (tras ${s} s).`;snd("bad");}
   say(CUR.icMsg);save();render();}
 function endBellWait(){const s=CUR.bellSec||0;
+  if(CUR.msg==="vecino2"){CUR.stage="neigh";CUR.neigh=neighbour(true,"2.º");say(CUR.neigh.txt);save();return render();}
   if(CUR.willAnswer){CUR.stage="conv";const txt=openLine(false);const icT=CUR.icSec?` (portero ${CUR.icSec} s)`:"";
     CUR.log=[{who:`${CUR.rcp.name} · abre tras ${s} s${icT}`,cls:isFlirt(CUR.rcp)?"flirt":"",txt}];say(txt);}else{CUR.stage="nohome";snd("bad");}save();render();}
-function endCitaWait(){S.clock=Math.max(clockNow(),CUR.win[0]);S.liveAt=wallNow();save();hdrUI();startDoor();}
+function endCitaWait(){S.clock=Math.max(clockNow(),CUR.win[0]);S.liveAt=wallNow();save();hdrUI();startApproach();}
 function endWait5(){CUR.willAnswer=true;CUR.msg=null;CUR.stage="door";save();render();}
-function intercom(){if(!CUR||CUR.stage!=="door"||!isPisoH(CUR.housing))return;snd("intercom");CUR.stage="ic_wait";const s=icWaitSec();CUR.icSec=s;render();startWait("ic",s);}
+function intercom(){if(!CUR||CUR.stage!=="door"||!isPisoH(doorHousing()))return;snd("intercom");CUR.stage="ic_wait";const s=icWaitSec();CUR.icSec=s;render();startWait("ic",s);}
 function replyIntercom(){if(!CUR||CUR.stage!=="ic_ask")return;CUR.stage="building_up";CUR.icMsg="«¡Ah, perfecto! Pase, le abro el portal.»";snd("ok");say(CUR.icMsg);save();render();}
-function goUp(){if(!CUR||!["building_up","porter"].includes(CUR.stage))return;
-  const fl=CUR.housing.floor||3;
-  if(CUR.housing.lift){CUR.stage="lift_wait";render();startWait("lift",liftSec(fl));}
-  else{CUR.stage="stairs_wait";render();startWait("stairs",stairsSec(fl));}}
+function goUp(){if(!CUR||!["building_up","porter"].includes(CUR.stage))return;CUR.wasUp=true;CUR.stage="at_floor";save();render();}
+function arriveAtDoor(){if(!CUR||CUR.stage!=="at_floor")return;CUR.stage="flat_door";if(CUR.msg==="vecino2")CUR.bellNeigh=true;save();render();}
 function doorbell(){if(!CUR||!["door","flat_door"].includes(CUR.stage))return;snd("doorbell");CUR.stage="bell_wait";const s=bellWaitSec();CUR.bellSec=s;render();startWait("bell",s);}
 
 // ---------- Conversación (sugerente nunca explícita; comida fría/caliente) ----------
@@ -600,24 +616,23 @@ function reply(ch){const {rcp,type,cold}=CUR,fl=isFlirt(rcp);CUR.alba=ch;let a,c
   CUR.log.push({who:"ALBA",cls:"alba",txt:a},{who:rcp.name,cls:fl?"flirt":"",txt:c});say(c);
   if(CUR.incident==="danado"&&!CUR.incDone){CUR.stage="damaged";}else if(CUR.incident==="rechazo"&&!CUR.incDone){CUR.stage="refused";}
   render();}
+function isHomePickup(){return !!(CUR&&(CUR.atPickupHome||CUR.type==="recogida"||(CUR.type==="particular"&&!CUR.puDone)));}
 function afterConv(){
-  if(CUR.type==="recogida"){if(CUR.pkg.dni&&!CUR.dniOk){CUR.stage="dni";return render();}
-    CUR.puDone=true;toast("Devolución recogida: llévala a la nave");startReturnToMoto("leg");return;}
+  if(isHomePickup()){if(CUR.pkg.dni&&!CUR.dniOk){CUR.stage="dni";return render();}
+    CUR.puDone=true;toast(CUR.type==="recogida"?"Devolución recogida: llévala a la nave":"Paquete recogido: llévalo a destino");startReturnToMoto("leg");return;}
   if(CUR.pkg.cod>0&&!CUR.codDone){CUR.stage="cod";return render();}
   if(CUR.pkg.dni){CUR.stage="dni";return render();}
   finish("entregado");}
 function neighbour(force,floorTxt){const n=makeRcp(CUR.place,CUR.housing,CUR.ts);const ok=force||(F().neighAccepts!=null?F().neighAccepts:Math.random()<.72);
   return {name:n.name,ok,txt:ok?`«Sí, ${force?"ya me avisó. ":""}Yo se lo guardo, sin problema.»`:"«Lo siento, salgo ahora y no puedo quedármelo.»",fl:floorTxt||(CUR.housing.floor?`${Math.max(1,CUR.housing.floor-1)}.º`:"casa de al lado")};}
 
-// ---------- Vuelta a la moto (tiempo real 1:1) ----------
+// ---------- Vuelta a la moto (pasos con botón; el tiempo lo marca quien juega en ETS2) ----------
 let LAST_RET={};
 function uniqueSec(a,b,key){const f=F(),fk=key+"Sec";if(f[fk]!=null)return f[fk];let s=rndI(a,b);if(s===LAST_RET[key])s=s<b?s+1:s-1;LAST_RET[key]=s;return s;}
 function walkToMotoSec(){return uniqueSec(20,90,"walk");}
 function inferRetKind(){
   if(CUR.retAfter==="leg"){
-    if(CUR.type==="recogida"&&CUR.pu&&CUR.pu.kind==="home_ret")return isPisoH(CUR.housing)?"piso":"casa";
-    const k=CUR.pu&&CUR.pu.kind;
-    if(k==="particular")return "casa";
+    if(CUR.atPickupHome||(CUR.pu&&(CUR.pu.kind==="particular"||CUR.pu.kind==="home_ret")))return isPisoH(doorHousing())?"piso":"casa";
     return "local";
   }
   if(CUR.type==="pudo"||CUR.type==="recogida")return "local";
@@ -633,35 +648,38 @@ function localLeaveTitle(){
   if(k==="shop")return "🚪 Saliendo de la tienda…";
   return "🚪 Saliendo de la nave…";
 }
+function retBtn(st){
+  return ({
+    lift_down:"⬇️ Bajar en ascensor",
+    stairs_down:"⬇️ Bajar por las escaleras",
+    portal_out:"🚪 Salir del portal",
+    gate_out:(CUR.housing&&CUR.housing.gate)?"🚪 Salir por la verja":"🚪 Salir a la calle",
+    local_out: (localLeaveTitle()||"🚪 Salir").replace("Saliendo","Salir").replace("…",""),
+    walk_moto:"🚶 Caminar hasta la moto",
+    helmet:"🏍️ De vuelta en la moto"
+  })[st.k]||"🏍️ De vuelta en la moto";
+}
 function planReturnToMoto(){
-  const kind=inferRetKind(),steps=[],f=F(),h=CUR.housing||{};
+  const kind=inferRetKind(),steps=[],h=doorHousing();
   if(kind==="piso"){
     if(CUR.wasUp){
-      const fl=h.floor||3;
-      if(h.lift){
-        const lw=f.liftWaitSec!=null?f.liftWaitSec:(Math.random()<.5?uniqueSec(6,24,"liftWait"):0);
-        if(lw>0)steps.push({k:"lift_wait_down",sec:lw,title:"🛗 Esperando al ascensor…"});
-        const ld=f.liftDownSec!=null?f.liftDownSec:liftSec(fl);
-        steps.push({k:"lift_down",sec:Math.max(4,ld),title:"🛗 Bajando en ascensor…",fl});
-      }else{
-        const sd=f.stairsDownSec!=null?f.stairsDownSec:Math.max(8,Math.round(stairsSec(fl)*.85));
-        steps.push({k:"stairs_down",sec:sd,title:"🪜 Bajando las escaleras…",fl});
-      }
+      if(h.lift)steps.push({k:"lift_down",title:"Bajar en ascensor hasta el portal",fl:h.floor||3});
+      else steps.push({k:"stairs_down",title:"Bajar las escaleras hasta el portal",fl:h.floor||3});
     }
-    steps.push({k:"portal_out",sec:uniqueSec(5,14,"portal"),title:"🚪 Saliendo del portal…"});
+    steps.push({k:"portal_out",title:"Salir del portal"});
   }else if(kind==="casa"){
-    steps.push({k:"gate_out",sec:uniqueSec(5,16,"gate"),title:h.gate?"🚪 Saliendo por la verja…":"🚪 Saliendo a la calle…"});
+    steps.push({k:"gate_out",title:h.gate?"Salir por la verja":"Salir a la calle"});
   }else{
-    steps.push({k:"local_out",sec:uniqueSec(4,12,"local"),title:localLeaveTitle()});
+    steps.push({k:"local_out",title:(localLeaveTitle()||"Salir").replace("🚪 ","").replace("…","")});
   }
-  steps.push({k:"walk_moto",sec:walkToMotoSec(),title:"🚶 Caminando hasta la moto…"});
-  steps.push({k:"helmet",sec:uniqueSec(6,16,"helmet"),title:stillHasPkg()?"📦 Guardando el pedido en el baúl y poniéndote el casco…":"🪖 Poniéndote el casco…"});
-  return steps.filter(s=>s.sec>0);
+  steps.push({k:"walk_moto",title:"Caminar hasta la moto"});
+  steps.push({k:"helmet",title:stillHasPkg()?"Guardar en el baúl y ponerse el casco":"Ponerse el casco"});
+  return steps;
 }
-function startReturnToMoto(after){CUR.retAfter=after;CUR.retSteps=planReturnToMoto();CUR.retIdx=0;if(!CUR.retSteps.length)return endReturnToMoto();playReturnStep();}
-function playReturnStep(){if(!CUR||!CUR.retSteps||CUR.retIdx>=CUR.retSteps.length)return endReturnToMoto();const st=CUR.retSteps[CUR.retIdx];CUR.stage="ret_moto";CUR.retStep=st;save();render();startWait("ret_moto",st.sec);}
+function startReturnToMoto(after){hideToast();CUR.retAfter=after;CUR.retSteps=planReturnToMoto();CUR.retIdx=0;CUR.wait=null;if(!CUR.retSteps.length)return endReturnToMoto();playReturnStep();}
+function playReturnStep(){if(!CUR||!CUR.retSteps||CUR.retIdx>=CUR.retSteps.length)return endReturnToMoto();const st=CUR.retSteps[CUR.retIdx];CUR.stage="ret_moto";CUR.retStep=st;save();render();}
 function endReturnStep(){CUR.retIdx=(CUR.retIdx||0)+1;playReturnStep();}
-function endReturnToMoto(){const after=CUR.retAfter;CUR.retSteps=CUR.retStep=null;CUR.retIdx=0;CUR.retAfter=null;if(after==="leg"){beginLeg(false);return;}showNoteAfterReturn();}
+function endReturnToMoto(){const after=CUR.retAfter;CUR.retSteps=CUR.retStep=null;CUR.retIdx=0;CUR.retAfter=null;CUR.atPickupHome=false;if(after==="leg"){beginLeg(false);return;}showNoteAfterReturn();}
 
 // ---------- Cierre: pago, nota, reseña ----------
 function finish(out,extra){if(!CUR)return;clearInterval(WT);CUR.out=out;CUR.extra=extra||"";const {rcp,housing,pkg,type,cold}=CUR;let tip=0,rate=5;
@@ -744,7 +762,7 @@ function render(){hdrUI();
     const due=S.retries.filter(r=>r.day<=S.day).length,later=S.retries.filter(r=>r.day>S.day).length;
     card(`<div class="sec"><h2><span>🏍️ ALBA está libre</span></h2><div class="sub">Pulsa para recibir el siguiente ${S.mode==="comida"?"pedido de comida":S.mode==="paqueteria"?"paquete":"paquete o pedido"} (uno cada vez). ALBA reparte en moto.${later?` Tienes ${later} 2.º intento(s) para mañana: pulsa «Nuevo día» en Hoy.`:""}${due?` Hay ${due} 2.º intento(s) para hoy.`:""}</div>
       <div class="acts"><button class="btn b-pri" id="bFind">${S.mode==="comida"?"🍔 Buscar pedido":"📦 Buscar encargo"}</button></div></div>`);$("bFind").onclick=async()=>{$("bFind").disabled=true;$("bFind").textContent="Buscando…";await makeOffer();};return;}
-  const st=CUR.stage,h=CUR.housing;let body="";
+  const st=CUR.stage,h=doorHousing();let body="";
   const btn=(id,cls,t,dis)=>`<button class="btn ${cls}" id="${id}"${dis?" disabled":""}>${t}</button>`;
   if(st==="offer")body=`<div class="sec offer"><h2><span>${CUR.type==="comida"?"🍔 Nuevo pedido de comida":"📦 Nuevo paquete"}</span><span>${CUR.R1.real&&CUR.R2.real?'<span class="treal">ruta OSRM</span>':'<span class="tsim">ruta estimada</span>'}</span></h2>${head()}${legsHTML()}
     <div class="kv"><span>Recorrido total (2 tramos)</span><span>${num1(CUR.totalKm)} km · ${Math.round(CUR.totalMin)} min</span></div>${pkgHTML()}${CUR.type!=="pudo"?rcpHTML(false):""}
@@ -752,8 +770,9 @@ function render(){hdrUI();
   else{const top=`<div class="sec"><h2><span>${TYPES[CUR.type].ic} ${esc(CUR.rcp.name)}</span>${coTag(CUR.co)}</h2><div class="tags" style="margin-top:0">${typeTags()}</div>${legsHTML()}${pkgHTML()}</div>`;let a="";
     if(st==="leg_pu"||st==="ready_pu"||st==="driving_pu")a=`<div class="sub">Mapa de referencia · ${num1(CUR.R1.km)} km · unos ${Math.round(CUR.R1.min)} min. El trayecto lo haces tú (en moto).</div>
       <div class="acts">${btn("bArrPu","b-pri",arrPuLabel())}</div>`;
+    else if(st==="approach")a=`<div class="sub">Has llegado. Baja de la moto, ${approachKind()==="local"?"entra":"saca lo que necesites del baúl"} y anda. El tiempo lo marcas tú en ETS2.</div><div class="acts">${btn("bApproach","b-pri",approachBtn())}</div>`;
     else if(st==="food_prep")a=`<div class="waitbox">🍳 ${esc(CUR.prepLine)}<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
-    else if(st==="handle_pu")a=`<div class="waitbox">👜 Recogiendo el pedido…<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
+    else if(st==="handle_pu")a=`<div class="sub">👜 El tiempo de recoger el pedido lo marcas tú en ETS2.</div><div class="acts">${btn("bTakePu","b-pri",CUR.type==="comida"||(CUR.pu&&CUR.pu.kind==="food")?"👜 Ya tengo el pedido":"📦 Ya tengo el paquete")}</div>`;
     else if(st==="pickup")a=`<div class="dlg"><div class="who">${esc(CUR.pu.name)} · simulado</div>${esc(CUR.puLine)}</div>
       <div class="sub">Siguiente tramo (referencia): ${num1(CUR.R2.km)} km · unos ${Math.round(CUR.R2.min)} min. El trayecto lo haces tú.</div>
       <div class="acts">${btn("bArr","b-pri",arrDelLabel())}</div>`;
@@ -776,12 +795,11 @@ function render(){hdrUI();
     else if(st==="porter")a=`<div class="dlg"><div class="who">👮 Conserje · simulado</div>${esc(CUR.icMsg)}</div><div class="acts">${btn("bPort","b-pri","🚪 Dejar en portería")}${btn("bUp","b-blue",`🛗 Subir en ascensor al ${h.floor}.º`)}</div>`;
     else if(st==="building_up")a=`<div class="dlg"><div class="who">📞 Portero automático (abierto tras ${CUR.icSec} s) · simulado</div>${esc(CUR.icMsg)}</div>
       ${h.lift?`<div class="sub">🛗 El edificio <b>tiene ascensor</b>. Toca subir hasta el ${h.floor}.º.</div><div class="acts">${btn("bUp","b-blue",`🛗 Subir en ascensor al ${h.floor}.º`)}</div>`:
-      `<div class="dlg warn"><div class="who">🪜 Sin ascensor</div>Edificio antiguo sin ascensor: toca subir andando hasta el <b>${h.floor}.º</b>.</div><div class="acts">${btn("bUp","b-warn",`🪜 Subir por las escaleras al ${h.floor}.º`)}</div>`}`;
-    else if(st==="lift_wait")a=`<div class="waitbox">🛗 Subiendo en ascensor…<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
-    else if(st==="stairs_wait")a=`<div class="waitbox">🪜 Subiendo las escaleras (${esc(String(h.floor))}.º)…<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
-    else if(st==="flat_door")a=`<div class="sub">Estás delante de la puerta del piso (${esc(h.fl)}). Toca el timbre.</div><div class="acts">${btn("bBell","b-pri","🔔 Timbre del piso")}</div>`;
+      `<div class="dlg warn"><div class="who">🪜 Sin ascensor</div>Edificio antiguo sin ascensor: toca subir andando hasta el <b>${h.floor}.º</b>.</div><div class="acts">${btn("bUp","b-warn",`🪜 Subir andando al ${h.floor}.º`)}</div>`}`;
+    else if(st==="at_floor")a=`<div class="sub">Has subido al ${esc(String(h.floor))}.º (${esc(h.fl)}). El tiempo lo marcas tú en ETS2.</div><div class="acts">${btn("bAtDoor","b-pri","🚪 Ya estoy en la puerta")}</div>`;
+    else if(st==="flat_door")a=`<div class="sub">${CUR.bellNeigh?"Estás en el rellano, en la puerta del vecino del 2.º.":`Estás delante de la puerta del piso (${esc(h.fl)}).`} Toca el timbre.</div><div class="acts">${btn("bBell","b-pri",CUR.bellNeigh?"🔔 Timbre del vecino del 2.º":"🔔 Timbre del piso")}</div>`;
     else if(st==="bell_wait")a=`<div class="waitbox">🔔 Esperando en la puerta… (tiempo real)<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
-    else if(st==="ret_moto"){const rs=CUR.retStep||{},n=(CUR.retIdx||0)+1,tot=(CUR.retSteps||[]).length;a=`<div class="waitbox">🏍️ Vuelta a la moto${tot?` · paso ${n} de ${tot}`:""}<div class="sub">${esc(rs.title||"Volviendo a la moto…")}</div><div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;}
+    else if(st==="ret_moto"){const rs=CUR.retStep||{},n=(CUR.retIdx||0)+1,tot=(CUR.retSteps||[]).length;a=`<div class="dlg"><div class="who">🏍️ Vuelta a la moto${tot?` · paso ${n} de ${tot}`:""}</div>${esc(rs.title||"Vuelve a la moto")}. El tiempo lo marcas tú en ETS2.</div><div class="acts">${btn("bRetNext","b-pri",retBtn(rs))}</div>`;}
     else if(st==="nohome")a=`<div class="dlg warn"><div class="who">🚪 No abre nadie${CUR.bellSec?" (tras "+CUR.bellSec+" s)":""}</div>¿Qué haces?</div><div class="acts">
       ${CUR.type!=="recogida"&&CUR.type!=="comida"&&!CUR.pkg.cod?btn("bNeigh","b-blue","🏘️ Probar con un vecino"):""}${h.porter&&CUR.type!=="recogida"?btn("bPort","b-sec","🚪 Dejar en portería"):""}
       ${CUR.pkg.size==="sobre"&&!CUR.pkg.cod&&!CUR.pkg.dni&&CUR.type!=="recogida"?btn("bBuz","b-sec","📬 Dejar en el buzón"):""}
@@ -808,9 +826,10 @@ function render(){hdrUI();
 
 function bind(){const b=(id,fn)=>{const e=$(id);if(e)e.onclick=fn;};
   b("bAcc",accept);b("bRej",reject);b("bArrPu",arrivePickup);b("bArr",arriveDelivery);
+  b("bApproach",doApproach);b("bTakePu",showPickupTalk);b("bAtDoor",arriveAtDoor);b("bRetNext",endReturnStep);
   b("bIc",intercom);b("bIcSay",replyIntercom);b("bUp",goUp);b("bBell",doorbell);
   b("bPudo",()=>finish(CUR.type==="recogida"?"recogido":"pudo"));
-  b("bCitaW",()=>{const sec=Math.max(5,Math.round((CUR.win[0]-clockNow())*60));CUR.stage="cita_wait";render();startWait("cita",sec);});b("bCitaTry",()=>{CUR.willAnswer=CUR.willAnswer&&Math.random()<.6;startDoor();});
+  b("bCitaW",()=>{const sec=Math.max(5,Math.round((CUR.win[0]-clockNow())*60));CUR.stage="cita_wait";render();startWait("cita",sec);});b("bCitaTry",()=>{CUR.willAnswer=CUR.willAnswer&&Math.random()<.6;startApproach();});
   b("bAddrCall",()=>{CUR.incDone=true;CUR.inc="direccion";const ok=F().addrOk!=null?F().addrOk:Math.random()<.75;if(ok){CUR.log=[];toast(`${CUR.rcp.nom}: «¡Perdona! Es el ${CUR.housing.floor?CUR.housing.floor+".º":"bajo"}.»`);startDoor();}else{toast("No contesta al teléfono");finish("noentrega");}});
   b("bAddrNo",()=>finish("noentrega"));
   b("bW5",()=>{CUR.stage="wait5_run";render();startWait("wait5",300);});b("bW5no",()=>{CUR.msg=null;CUR.willAnswer=Math.random()<.4;CUR.stage="door";render();});
@@ -822,7 +841,7 @@ function bind(){const b=(id,fn)=>{const e=$(id);if(e)e.onclick=fn;};
   const cod=t=>{CUR.codDone=true;snd("cash");toast(t);if(CUR.pkg.dni){CUR.stage="dni";render();}else finish("entregado");};
   b("bCodX",()=>cod(`Cobrado ${eur(CUR.pkg.cod)}`));b("bCodCh",()=>cod("Le das el cambio"));b("bCodCard",()=>cod("Pago con datáfono aceptado (sim.)"));b("bCodKeep",()=>cod("«Vale, vale…» Paga el importe exacto"));
   b("bDni",()=>{CUR.dniOk=true;snd("ok");const x=$("bDni");x.textContent="✅ DNI comprobado";x.className="btn b-sec b-sm";const s=$("bSignOk");if(s)s.disabled=!(CUR.dniOk&&CUR.signed);});
-  b("bSignOk",()=>{if(CUR.type==="recogida"){CUR.puDone=true;toast("Devolución recogida: llévala a la nave");startReturnToMoto("leg");}else finish("entregado");});
+  b("bSignOk",()=>{if(isHomePickup()){CUR.puDone=true;toast(CUR.type==="recogida"?"Devolución recogida: llévala a la nave":"Paquete recogido: llévalo a destino");startReturnToMoto("leg");}else finish("entregado");});
   b("bNoteOk",()=>{const v=$("inNote").value.trim();if(CUR.entry){CUR.entry.note=v;const g=S.regulars[CUR.rcp.id];if(g)g.lastNote=v;}save();CUR=null;mapClear();sideUI();render();});
   if(CUR&&CUR.stage==="dni")sigInit();}
 
@@ -861,7 +880,13 @@ $("fileImp").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new Fil
 $("btnReset").onclick=()=>{if(!confirm("¿Borrar toda la partida del Simulador Paquetería?"))return;S=S0();S.pos=zoneCenter(S.zone);CUR=null;mapClear();save();zoneUI();syncMode(S.mode);setProvider(0,true);sideUI();render();mapAlba();};
 $("mTabs").onclick=e=>{const b=e.target.closest("button[data-mt]");if(!b)return;document.body.dataset.tab=b.dataset.mt;document.querySelectorAll("#mTabs button").forEach(x=>x.classList.toggle("on",x===b));if(b.dataset.mt==="reparto"&&map)setTimeout(()=>map.invalidateSize(),50);window.scrollTo(0,0);};
 $("selTime").value=S.timeMode;zoneUI();syncMode(S.mode);sideUI();render();mapAlba();
-if(CUR){try{mapShow(CUR);}catch(e){}resumeWait();startClockTick();}
+function migrateAlbaActions(){if(!CUR)return;const st=CUR.stage,w=CUR.wait&&CUR.wait.kind;
+  if(st==="lift_wait"||st==="stairs_wait"||w==="lift"||w==="stairs"){CUR.wait=null;CUR.wasUp=true;CUR.stage="at_floor";}
+  else if(st==="handle_pu"||w==="handle"){CUR.wait=null;CUR.stage="handle_pu";}
+  else if(st==="ret_moto"||w==="ret_moto"){CUR.wait=null;if(!CUR.retStep&&CUR.retSteps&&CUR.retSteps.length)CUR.retStep=CUR.retSteps[CUR.retIdx||0];}
+  if(CUR.wait&&["lift","stairs","handle","ret_moto"].includes(CUR.wait.kind))CUR.wait=null;
+  save();}
+if(CUR){try{mapShow(CUR);}catch(e){}migrateAlbaActions();resumeWait();startClockTick();}
 window.PQ={S:()=>S,CUR:()=>CUR,makeOffer,route,icWaitSec,bellWaitSec,walkToMotoSec,setProvider,PROVIDERS,DATA,SND_LOG,VOZ_LOG,ver:APP_VER,cuisineKey,FOOD_BY,hideToast,testSpeed,clockNow,fmtMMSS,waitLeft};
 </script>
 </body>
