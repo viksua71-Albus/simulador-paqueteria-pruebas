@@ -115,6 +115,10 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
 .icb small{font-weight:500;font-size:10px;color:#39404a;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .icb.faded{opacity:.5;background:linear-gradient(#d6d9de,#a9afb7)}.icb.port{grid-column:1/-1;background:linear-gradient(#f7e9bd,#d2b66b)}
 .icb:active{transform:translateY(1px);filter:brightness(.92)}
+.vest{background:#151c26;border:1px solid #3d4a5c;border-radius:10px;padding:10px 12px;margin:8px 0;color:#d5deea;font-size:14px;line-height:1.4}
+.vest .who{font-size:11px;font-weight:800;letter-spacing:.4px;color:#8ea0b8;margin-bottom:4px;text-transform:uppercase}
+.vest.provo{border-color:#c4a56a;background:#1c1810;color:#f0e6d0}
+.vest.provo .who{color:#e6c27a}
 .dlg.enc{border-left:3px solid #c084fc}
 .photo{background:linear-gradient(#3a4656,#1e2630);border:7px solid #eee;border-radius:6px;height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:8px auto;max-width:260px;box-shadow:0 4px 10px #0008}.photo .ph-ic{font-size:56px}.photo .ph-t{font-size:11px;color:#dfe6ee;margin-top:6px;text-align:center;padding:0 6px}
 .lvl{background:#131a24;border:1px solid #2b3b52;border-radius:10px;padding:10px;margin:6px 0}.lvl .bar{margin:6px 0 4px}
@@ -127,7 +131,7 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
     <div class="legend">🏍️ ALBA · 🟡 recogida · 🔴 entrega · <span id="lgRt">mapa de referencia</span></div></div>
   <div id="panel">
     <header>
-      <h1>📦 Simulador <span>Paquetería</span> España<span class="ver">v1.3</span></h1>
+      <h1>📦 Simulador <span>Paquetería</span> España<span class="ver">v1.3.1</span></h1>
       <div class="sim-badge">⚠️ SIMULACIÓN: personas, pagos, comida y diálogos ficticios · lugares reales (OSM)</div>
       <div class="hrow">
         <span class="pill alba">👩🏍️ Repartidora: <b>ALBA</b></span>
@@ -174,7 +178,7 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
           <input type="file" id="fileImp" accept=".json,application/json" hidden>
           <div class="acts"><button class="btn b-bad b-sm" id="btnReset">🗑️ Borrar partida</button></div>
         </div>
-        <div class="sec"><h2><span>ℹ️ Datos</span></h2><div class="sub">Municipios, calles, polígonos, tiendas, restaurantes y estaciones reales de OpenStreetMap. El mapa y la ruta (OSRM) son una referencia: ALBA va en moto y el trayecto lo haces tú en ETS2, con el botón «He llegado». Naves, app de comida, personas, viviendas, mensajes e incidencias <b>simulados</b>. Desde que llegas hasta entregar, todo va a tiempo real 1:1 (andar al portal, portero, ascensor o escaleras, timbre, cocina, recogida). Al bajar también se cronometra (ascensor o escaleras). Ya en la calle, la vuelta a la moto la marcas tú con botones. Vecinos, multas, niveles y clientes son <b>simulados</b>.</div></div>
+        <div class="sec"><h2><span>ℹ️ Datos</span></h2><div class="sub">Municipios, calles, polígonos, tiendas, restaurantes y estaciones reales de OpenStreetMap. El mapa y la ruta (OSRM) son una referencia: ALBA va en moto y el trayecto lo haces tú en ETS2, con el botón «He llegado». Naves, app de comida, personas, viviendas, mensajes e incidencias <b>simulados</b>. Desde que llegas hasta entregar, todo va a tiempo real 1:1 (andar al portal, portero, ascensor o escaleras, timbre, cocina, recogida). Al bajar también se cronometra (ascensor o escaleras). Ya en la calle, la vuelta a la moto la marcas tú con botones. Vecinos, multas, niveles y clientes son <b>simulados</b>. Si abre un hombre, se describe cómo va vestido (a veces de forma sugerente, nunca explícita; simulado).</div></div>
       </div>
     </div>
   </div>
@@ -183,7 +187,7 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
 <div id="toast"></div>
 <script>
 "use strict";
-const APP_VER="1.3";
+const APP_VER="1.3.1";
 const HTTP=location.protocol==="http:"||location.protocol==="https:";
 if(HTTP){for(const [rel,href] of [["manifest","manifest.webmanifest"],["icon","icons/icon-192.png"],["apple-touch-icon","icons/icon-192.png"]]){const l=document.createElement("link");l.rel=rel;l.href=href;document.head.appendChild(l);}
   if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});}
@@ -496,7 +500,7 @@ const MSG_TXT={bajando:"Estoy bajando, ¡espérame en el portal! 🏃",espera5:"
 // ---------- Tramos de referencia (el trayecto lo hace el jugador; sin barra ni espera) ----------
 function arrPuLabel(){const k=CUR.pu&&CUR.pu.kind,ty=CUR.type;if(ty==="comida"||k==="food")return "📍 He llegado al restaurante";if(k==="shop")return "📍 He llegado a la tienda";if(k==="ind")return "📍 He llegado a la nave";return "📍 He llegado a la recogida";}
 function arrDelLabel(){if(CUR.type==="recogida")return "📍 He llegado a la nave";if(CUR.type==="pudo")return "📍 He llegado al punto de recogida";return "📍 He llegado a la entrega";}
-function beginLeg(isPickup){startLiveClock();CUR.stage=isPickup?"leg_pu":"leg_del";CUR.legAt=wallNow();if(isPickup)CUR.msgShown=false;else{CUR.alba=null;CUR.log=[];CUR.wasUp=false;CUR.atPickupHome=false;CUR.bellNeigh=false;CUR.descDone=false;CUR.enc=null;CUR.avisoOpen=false;}save();mapShow(CUR);render();}
+function beginLeg(isPickup){startLiveClock();CUR.stage=isPickup?"leg_pu":"leg_del";CUR.legAt=wallNow();if(isPickup)CUR.msgShown=false;else{CUR.alba=null;CUR.log=[];CUR.wasUp=false;CUR.atPickupHome=false;CUR.bellNeigh=false;CUR.descDone=false;CUR.enc=null;CUR.avisoOpen=false;CUR.dress=null;CUR.dressReact=null;CUR.dressMood=0;}save();mapShow(CUR);render();}
 function accept(){if(!CUR||CUR.stage!=="offer")return;snd("ok");beginLeg(true);}
 function reject(){commitLiveClock();CUR=null;mapClear();toast("Pedido rechazado");save();render();}
 function maybeShowApproachMsg(){if(!CUR||CUR.msgShown||!CUR.msg||CUR.stage!=="leg_del"||!CUR.legAt)return;
@@ -617,9 +621,10 @@ function endIcWait(){const f=F(),s=CUR.icSec||0,h=doorHousing();
   }else{CUR.stage="nohome";CUR.icMsg=`Nadie contesta al portero automático (tras ${s} s).`;snd("bad");}
   say(CUR.icMsg);save();render();}
 function endBellWait(){const s=CUR.bellSec||0;
-  if(CUR.msg==="vecino2"){CUR.stage="neigh";CUR.neigh=neighbour(true,"2.º");say(CUR.neigh.txt);save();return render();}
-  if(CUR.willAnswer){CUR.stage="conv";let txt=openLine(false);if(CUR.isRepeat&&isFlirt(CUR.rcp)&&(CUR.rcp.visits||1)>=3)txt+=` «Ya van ${CUR.rcp.visits} veces… empiezo a pensar que pido cosas solo para verte.»`;const icT=CUR.icSec?` (portero ${CUR.icSec} s)`:"";
-    CUR.log=[{who:`${CUR.rcp.name} · abre tras ${s} s${icT}`,cls:isFlirt(CUR.rcp)?"flirt":"",txt}];say(txt);}else{CUR.stage="nohome";snd("bad");}save();render();}
+  if(CUR.msg==="vecino2"){CUR.stage="neigh";CUR.neigh=neighbour(true,"2.º");CUR.dress=CUR.neigh.dress||null;CUR.dressReact=null;CUR.dressMood=0;say(CUR.neigh.txt);save();return render();}
+  if(CUR.willAnswer){CUR.stage="conv";const who=doorPerson();CUR.dress=pickDress(who);CUR.dressReact=null;CUR.dressMood=0;
+    let txt=openLine(false);if(CUR.isRepeat&&isFlirt(CUR.rcp)&&(CUR.rcp.visits||1)>=3)txt+=` «Ya van ${CUR.rcp.visits} veces… empiezo a pensar que pido cosas solo para verte.»`;const icT=CUR.icSec?` (portero ${CUR.icSec} s)`:"";
+    CUR.log=[{who:`${who.name} · abre tras ${s} s${icT}`,cls:isFlirt(who)?"flirt":"",txt}];say(txt);}else{CUR.stage="nohome";snd("bad");}save();render();}
 function endCitaWait(){S.clock=Math.max(clockNow(),CUR.win[0]);S.liveAt=wallNow();save();hdrUI();startApproach();}
 function endWait5(){CUR.willAnswer=true;CUR.msg=null;CUR.stage="door";save();render();}
 function intercom(){if(!CUR||CUR.stage!=="door"||!isPisoH(doorHousing()))return;snd("intercom");CUR.stage="ic_wait";const s=icWaitSec();CUR.icSec=s;render();startWait("ic",s);}
@@ -674,8 +679,79 @@ function afterConv(){
   if(CUR.pkg.cod>0&&!CUR.codDone){CUR.stage="cod";return render();}
   if(CUR.pkg.dni){CUR.stage="dni";return render();}
   finish("entregado");}
-function neighbour(force,floorTxt){const n=makeRcp(CUR.place,CUR.housing,CUR.ts);const ok=force||(F().neighAccepts!=null?F().neighAccepts:Math.random()<.72);
-  return {name:n.name,ok,txt:ok?`«Sí, ${force?"ya me avisó. ":""}Yo se lo guardo, sin problema.»`:"«Lo siento, salgo ahora y no puedo quedármelo.»",fl:floorTxt||(CUR.housing.floor?`${Math.max(1,CUR.housing.floor-1)}.º`:"casa de al lado")};}
+function neighbour(force,floorTxt){const n=makeRcp(CUR.place,CUR.housing,CUR.ts);if(F().neighG)n.g=F().neighG;const ok=force||(F().neighAccepts!=null?F().neighAccepts:Math.random()<.72);
+  const dress=pickDress(n);return {name:n.name,ok,txt:ok?`«Sí, ${force?"ya me avisó. ":""}Yo se lo guardo, sin problema.»`:"«Lo siento, salgo ahora y no puedo quedármelo.»",fl:floorTxt||(CUR.housing.floor?`${Math.max(1,CUR.housing.floor-1)}.º`:"casa de al lado"),g:n.g,ch:n.ch,rx:n.rx,edad:n.edad,prof:n.prof,dress};}
+
+// ---------- 1.3.1: vestimenta de quien abre (solo hombres; sugerente, nunca explícita) ----------
+function doorPerson(){if(CUR&&CUR.atPickupHome&&CUR.pu&&CUR.pu.sender)return CUR.pu.sender;return CUR&&CUR.rcp;}
+const DRESS_N={
+  calle:{k:"calle",t:"Ropa de calle: vaqueros y una camiseta lisa."},
+  traje:{k:"traje",t:"Traje y corbata, como si acabara de llegar del trabajo."},
+  chandal:{k:"chandal",t:"Chándal cómodo, de estar por casa."},
+  pijama:{k:"pijama",t:"Pijama, con cara de recién levantado."},
+  uniforme:{k:"uniforme",t:"El uniforme de trabajo, todavía puesto."},
+  deporte:{k:"deporte",t:"Ropa de deporte, un poco sudada, como si viniera de entrenar."},
+  camisa:{k:"camisa",t:"Camisa arremangada y pantalón de tela."},
+  jersey:{k:"jersey",t:"Jersey y zapatillas, ropa de estar por casa."}
+};
+const DRESS_P={
+  sin_camiseta:{k:"sin_camiseta",t:"Abre sin camiseta, solo con el pantalón del chándal."},
+  boxer:{k:"boxer",t:"Abre en bóxer, como si no esperara a nadie."},
+  banador:{k:"banador",t:"En bañador, con el pelo todavía un poco mojado."},
+  toalla:{k:"toalla",t:"Solo con una toalla a la cintura, recién salido de la ducha."},
+  bata_abierta:{k:"bata_abierta",t:"Lleva la bata de casa abierta, relajado, como si no esperara visitas."},
+  ducha:{k:"ducha",t:"Recién salido de la ducha: el pelo mojado, sin camiseta y una toalla al hombro."}
+};
+function pickDress(p){if(!p||p.g!=="m")return null;const f=F(),ts=CUR&&CUR.ts,edad=p.edad||40,last=p.last||{};
+  const all=Object.assign({},DRESS_N,DRESS_P),force=f.dress;
+  if(force==="off")return null;
+  let provo=false,k=null;
+  if(force&&all[force]){k=force;provo=!!DRESS_P[force];}
+  else if(force==="provoca"||f.dressProvoca)provo=true;
+  else if(force==="normal")provo=false;
+  else{
+    let pc=.12;if(isFlirt(p))pc+=p.rx==="ligon_atrevido"?.2:.12;if(CUR&&CUR.isRepeat&&CUR.rcp&&CUR.rcp.id===p.id)pc+=.08;
+    if(last.dressProvo&&last.dressReact==="juego")pc+=.1;if(last.dressReact==="cortar")pc-=.06;
+    if(ts==="siesta")pc+=.05;if(edad>=70)pc*=.25;else if(edad>=60)pc*=.5;
+    if(p.ch&&(p.ch.k==="seco"||p.ch.k==="exigente"))pc*=.45;if(p.ch&&p.ch.k==="simpatico")pc+=.03;
+    provo=Math.random()<Math.max(.02,Math.min(.42,pc));
+  }
+  if(!k){if(provo){const W=edad>=60?[["bata_abierta",50],["ducha",25],["sin_camiseta",25]]:ts==="manana"?[["ducha",22],["toalla",22],["sin_camiseta",18],["boxer",16],["bata_abierta",14],["banador",8]]:ts==="siesta"?[["boxer",22],["sin_camiseta",20],["bata_abierta",20],["toalla",16],["ducha",12],["banador",10]]:[["sin_camiseta",24],["boxer",16],["toalla",16],["banador",16],["bata_abierta",14],["ducha",14]];k=wpick(W);}
+    else{const uni=/Polic|Guardia|Enferm|Camarer|Chef|Cocin|Mecán|Operario|Conductor|Repart|Militar|Bomber|Seguridad|Mozo|Obrero/.test(p.prof||""),office=/Abogad|Direct|Banc|Administr|Gerente|Comercial|Ingenier|Médic|Notari|Ejecut/.test(p.prof||"");
+      const W=ts==="manana"?[["pijama",22],["jersey",16],["calle",16],["chandal",14],["camisa",12],["traje",office?16:8],["uniforme",uni?18:6],["deporte",6]]:ts==="siesta"?[["chandal",24],["pijama",20],["jersey",18],["calle",16],["camisa",10],["deporte",8],["traje",4]]:[["calle",22],["chandal",14],["camisa",14],["jersey",12],["deporte",12],["traje",office?16:8],["uniforme",uni?16:8],["pijama",6]];k=wpick(W);}}
+  const src=provo?DRESS_P:DRESS_N,base=src[k]||(provo?DRESS_P.sin_camiseta:DRESS_N.calle);
+  let txt=base.t;if(k==="uniforme"&&p.prof)txt="Uniforme de "+p.prof.toLowerCase()+", todavía puesto.";
+  if(provo&&(last.dressInt||1)>=2){if(k==="toalla")txt="Solo con una toalla a la cintura, recién salido de la ducha, y no parece tener prisa en cubrirse.";if(k==="sin_camiseta")txt="Abre sin camiseta, solo con el pantalón del chándal, muy a gusto en el umbral.";}
+  let vibe=f.dressVibe||null;
+  if(provo&&!vibe){if(isFlirt(p))vibe=p.rx==="ligon_atrevido"?"ligon":(Math.random()<.65?"ligon":"descarado");else vibe=wpick([["relajado",55],["descarado",28],["exhib",17]]);}
+  if(!provo)vibe=null;
+  const inte=Math.max(1,Math.min(3,(last.dressInt||1)+(last.dressReact==="juego"?1:last.dressReact==="cortar"?-1:0)));
+  return {k:base.k,t:txt,provo,vibe,int:inte};}
+function dressHTML(d){return d?`<div class="vest${d.provo?" provo":""}"><div class="who">👕 Vestimenta · simulado</div>${esc(d.t)}</div>`:"";}
+function vestBtns(){return `<div class="sub">¿Cómo reacciona ALBA?</div><div class="acts">${BTN("vP","b-pri","😐 Profesional, como si nada")}${BTN("vB","b-blue","😏 Soltar una broma")}${BTN("vF","b-purp","😉 Seguirle un poco el juego")}${BTN("vC","b-bad","✋ Cortarle")}</div>`;}
+function vestBroma(k){return {sin_camiseta:"«¡Vaya recibimiento! Hoy el uniforme es de verano, ¿eh?»",boxer:"«Perdona, se ve que ibas muy de relajado en casa.»",banador:"«¡Buenas! Se ve que la piscina está más cerca que el armario.»",toalla:"«Tranquilo, no es la primera toalla que veo en un reparto.»",bata_abierta:"«¡Buenas! La bata da un aire de domingo, sí.»",ducha:"«¡Justo de la ducha! Voy con prisa, pero se agradece el recibimiento.»"}[k]||"«¡Vaya, hoy se nota que estás en casa!»";}
+function vestAlbaLine(ch,k){return ch==="p"?"«Buenas, aquí está el envío.»":ch==="b"?vestBroma(k):ch==="f"?"«Bueno… se agradece la confianza. Vamos con el paquete, ¿sí?»":(k==="boxer"||k==="toalla"||k==="banador")?"«Por favor, un poco de ropa no estaría mal. Vamos al grano.»":"«Prefiero que nos centremos en la entrega.»";}
+function vestAns(vibe,ch,k){
+  const L={
+    ligon:{p:"«Ni te inmutas… qué profesional eres. Me gusta.»",b:"«¡Ja, ja! Perdona, no pensaba abrir así… o sí, un poco. Te ha sacado una sonrisa, ¿eh?»",f:"«Pues si te parece bien, la próxima te ofrezco un café… con más ropa, o no.»",c:"«Vale, vale, perdona la confianza. Aquí estoy, dime qué firmo.»"},
+    descarado:{p:"«Como si nada, ¿eh? Qué valor. El paquete, venga.»",b:"«¡Ja, ja! En mi casa voy así, ¿pasa algo?»",f:"«Me alegra que no te asustes. Pasa, que te atiendo yo.»",c:"«Eh, no te enfades. Era solo por estar en casa. El paquete, venga.»"},
+    exhib:{p:"«Perdona el aspecto… bueno, casi. ¿El envío es para mí?»",b:"«¡Ja! Al menos no me has cerrado la puerta. Toma, ya te firmo.»",f:"«Entonces no me cubro del todo, que así charlamos mejor. Es broma… o no tanto.»",c:"«Perdona, perdona. Me arreglo un poco y firmamos.»"},
+    relajado:{p:"«Ay, perdona, no me he dado cuenta. Es que en casa voy así.»",b:"«¡Ja, ja! Tienes razón, menudo recibimiento. Perdona, que no esperaba a nadie.»",f:"«Qué maja eres. Yo es que en casa voy muy a lo cómodo, nada más.»",c:"«Tienes razón, perdona. No era mi intención incomodarte.»"}
+  };
+  return (L[vibe]||L.relajado)[ch];
+}
+function vestReact(ch){if(!CUR||!CUR.dress||!CUR.dress.provo||CUR.dressReact)return;
+  const map={p:"profesional",b:"broma",f:"juego",c:"cortar"},vibe=CUR.dress.vibe||"relajado",k=CUR.dress.k;
+  CUR.dressReact=map[ch];
+  const alba=vestAlbaLine(ch,k),ans=vestAns(vibe,ch,k);
+  if(ch==="p")CUR.dressMood=vibe==="ligon"?1:0;
+  else if(ch==="b")CUR.dressMood=1;
+  else if(ch==="f"){CUR.dressMood=vibe==="relajado"?1:2;CUR.dress.int=Math.min(3,(CUR.dress.int||1)+1);}
+  else{CUR.dressMood=vibe==="relajado"?0:-1;CUR.dress.int=Math.max(1,(CUR.dress.int||1)-1);}
+  const person=CUR.stage==="neigh"?CUR.neigh:doorPerson();
+  if(CUR.stage==="conv")CUR.log.push({who:"ALBA",cls:"alba",txt:alba},{who:person.name,cls:(vibe==="ligon"||(person&&isFlirt(person)))?"flirt":"",txt:ans});
+  else if(CUR.neigh){CUR.neigh.vestAlba=alba;CUR.neigh.vestAns=ans;}
+  say(ans);save();render();}
 
 // ---------- 1.3: portero dibujado, vecinos, encuentros, multas, fotos, niveles, avisos ----------
 const BTN=(id,cls,t,dis)=>`<button class="btn ${cls}" id="${id}"${dis?" disabled":""}>${t}</button>`;
@@ -839,11 +915,11 @@ function endReturnToMoto(){const after=CUR.retAfter;CUR.retSteps=CUR.retStep=nul
 // ---------- Cierre: pago, nota, reseña ----------
 function finish(out,extra){if(!CUR)return;clearInterval(WT);CUR.out=out;CUR.extra=extra||"";const {rcp,housing,pkg,type,cold}=CUR;let tip=0,rate=5;
   const okOut=["entregado","vecino","porteria","buzon","puerta","pudo","recogido"].includes(out);
-  if(out==="entregado"||out==="recogido"){let p=rcp.tip==="generoso"?.6:rcp.tip==="a_veces"?.22:.03;if(housing.kind==="piso_sin_asc")p+=.2;if(type==="comida"&&!cold)p+=.22;if(CUR.alba==="simpatica")p+=.15;if(CUR.alba==="cortar")p-=.15;if(S.rain)p+=.1;p+=(CUR.avisoMood||0)*.04;if(CUR.isRepeat&&!isFlirt(rcp)&&["simpatico","paciente","normal"].includes(rcp.ch.k))p+=.06*Math.min(rcp.visits||1,4);if(CUR.late||cold)p-=.4;
+  if(out==="entregado"||out==="recogido"){let p=rcp.tip==="generoso"?.6:rcp.tip==="a_veces"?.22:.03;if(housing.kind==="piso_sin_asc")p+=.2;if(type==="comida"&&!cold)p+=.22;if(CUR.alba==="simpatica")p+=.15;if(CUR.alba==="cortar")p-=.15;if(S.rain)p+=.1;p+=(CUR.avisoMood||0)*.04;p+=(CUR.dressMood||0)*.08;if(CUR.isRepeat&&!isFlirt(rcp)&&["simpatico","paciente","normal"].includes(rcp.ch.k))p+=.06*Math.min(rcp.visits||1,4);if(CUR.late||cold)p-=.4;
     if(F().tip!=null)tip=F().tip;else if(Math.random()<p)tip=wpick([[1,45],[2,35],[3,12],[5,8]]);
     rate=cold?(CUR.alba==="cortar"?2:3):CUR.late?3:CUR.alba==="cortar"&&rcp.ch.k==="exigente"?3:CUR.inc==="danado"?3:rcp.ch.k==="seco"&&!tip?4:5;}
   else if(out==="vecino"||out==="porteria"||out==="buzon"||out==="puerta"){rate=4;}else if(out==="pudo")rate=5;else if(out==="ausente")rate=3;else rate=2;
-  {const am=CUR.avisoMood||0;if(okOut&&am>0&&(CUR.late||cold)&&rate<5)rate++;if(okOut&&am<0&&rate>3)rate--;}
+  {const am=CUR.avisoMood||0;if(okOut&&am>0&&(CUR.late||cold)&&rate<5)rate++;if(okOut&&am<0&&rate>3)rate--;if(okOut&&(CUR.dressMood||0)>=2&&rate<5)rate++;if(okOut&&(CUR.dressMood||0)<0&&isFlirt(rcp)&&rate>3)rate--;}
   let pay=okOut?CUR.pay:r2(Math.min(.6,CUR.pay));if((CUR.late||cold)&&okOut)pay=r2(pay*.6);
   CUR.tip=tip;CUR.rating=rate;CUR.payOut=pay;CUR.review=makeReview();
   CUR.note=out==="entregado"?`${housing.label}${cold?" · comida fría":""}${tip?" · propina":""}${isFlirt(rcp)?" · tiró los tejos":""}${CUR.inc==="danado"?" · daño anotado":""}`:
@@ -860,7 +936,7 @@ function showNoteAfterReturn(){if(!CUR||!CUR.pendingFinish){CUR.stage="note";ren
   S.history.unshift(e);if(S.history.length>600)S.history.length=600;CUR.entry=e;
   {const before=lvlIdx();let gx=okOut?10+(CUR.rating-3)*4+(tip?3:0):-2;if(e.fine)gx-=5;if(CUR.isRepeat&&okOut)gx+=2;e.xp=gx;S.xp=Math.max(0,(S.xp||0)+gx);const after=lvlIdx();if(after>before)setTimeout(()=>toast(`🎉 ¡Subes a nivel ${after+1}: ${LEVELS[after].n}!`),300);}
   if(CUR.type==="comida"&&okOut){const f=F(),pc=f.chain!=null?(f.chain?1:0):(lvlIdx()>=2?.35:.18);if(Math.random()<pc)CUR.chainPu=pickChain();}
-  if(CUR.type!=="pudo")S.regulars[rcp.id]={id:rcp.id,place:CUR.place,housing,rcp,addr:CUR.addr,dest:CUR.dest,visits:rcp.visits,last:{alba:CUR.alba||null,out},lastNote:CUR.note,ts:Date.now()};
+  if(CUR.type!=="pudo")S.regulars[rcp.id]={id:rcp.id,place:CUR.place,housing,rcp,addr:CUR.addr,dest:CUR.dest,visits:rcp.visits,last:{alba:CUR.alba||null,out,dress:CUR.dressReact||null,dressMood:CUR.dressMood||0,dressProvo:!!(CUR.dress&&CUR.dress.provo),dressInt:CUR.dress&&CUR.dress.int},lastNote:CUR.note,ts:Date.now()};
   CUR.pendingFinish=null;CUR.stage="note";okOut?snd("cash"):snd("bad");say(okOut?`Hecho. ${eur(pay)}${tip?" y "+eur(tip)+" de propina":""}.`:"Entrega no realizada.");
   save();hdrUI();render();sideUI();}
 function makeReview(){const {out,rcp,alba,late,inc,type,cold}=CUR,t=CUR.tip;
@@ -976,9 +1052,9 @@ function render(){hdrUI();
       ${CUR.type!=="recogida"&&CUR.type!=="comida"&&!CUR.pkg.cod?btn("bNeigh","b-blue","🏘️ Probar con un vecino"):""}${h.porter&&CUR.type!=="recogida"?btn("bPort","b-sec","🚪 Dejar en portería"):""}
       ${CUR.pkg.size==="sobre"&&!CUR.pkg.cod&&!CUR.pkg.dni&&CUR.type!=="recogida"?btn("bBuz","b-sec","📬 Dejar en el buzón"):""}
       ${CUR.type==="comida"?btn("bLeaveDoor","b-blue","🚪 Dejar en la puerta (sin contacto)")+btn("bRet","b-warn","🛍️ Pedido cancelado por ausencia"):CUR.attempt>1?btn("bRet","b-warn","↩️ Devolver al remitente"):btn("bAbs","b-warn","📝 Aviso de ausencia (2.º intento mañana)")}</div>`;
-    else if(st==="neigh")a=`<div class="dlg"><div class="who">🏘️ Vecino del ${esc(CUR.neigh.fl)} (${esc(CUR.neigh.name)}) · simulado</div>${esc(CUR.neigh.txt)}</div><div class="acts">${CUR.neigh.ok?btn("bGiveN","b-pri","✅ Entregar al vecino"):(CUR.attempt>1?btn("bRet","b-warn","↩️ Devolver al remitente"):btn("bAbs","b-warn","📝 Aviso de ausencia"))}</div>`;
+    else if(st==="neigh"){const nd=CUR.neigh||{};a=`${dressHTML(CUR.dress)}<div class="dlg"><div class="who">🏘️ Vecino del ${esc(nd.fl)} (${esc(nd.name)}) · simulado</div>${esc(nd.txt)}</div>${nd.vestAlba?`<div class="dlg alba"><div class="who">ALBA</div>${esc(nd.vestAlba)}</div><div class="dlg"><div class="who">${esc(nd.name)} · simulado</div>${esc(nd.vestAns)}</div>`:""}${CUR.dress&&CUR.dress.provo&&!CUR.dressReact?vestBtns():`<div class="acts">${nd.ok?btn("bGiveN","b-pri","✅ Entregar al vecino"):(CUR.attempt>1?btn("bRet","b-warn","↩️ Devolver al remitente"):btn("bAbs","b-warn","📝 Aviso de ausencia"))}</div>`}`;}
     else if(st==="conv"){const L=CUR.log.map(d=>`<div class="dlg ${d.cls||""}"><div class="who">${esc(d.who)} · simulado</div>${esc(d.txt)}</div>`).join("");
-      a=L+(!CUR.alba?`<div class="sub">¿Cómo responde ALBA?</div><div class="acts">${btn("rP","b-pri","😊 Amable y profesional")}${btn("rS","b-purp","😄 Simpática, le sigue la broma")}${btn("rC","b-bad","✋ Cortar e ir al grano")}</div>`:
+      a=L+dressHTML(CUR.dress)+(CUR.dress&&CUR.dress.provo&&!CUR.dressReact?vestBtns():!CUR.alba?`<div class="sub">¿Cómo responde ALBA?</div><div class="acts">${btn("rP","b-pri","😊 Amable y profesional")}${btn("rS","b-purp","😄 Simpática, le sigue la broma")}${btn("rC","b-bad","✋ Cortar e ir al grano")}</div>`:
         `<div class="acts">${btn("bNext","b-pri",CUR.type==="recogida"?(CUR.pkg.dni&&!CUR.dniOk?"🪪 DNI y firma de la devolución":"↩️ Recoger devolución y llevar a nave"):CUR.type==="comida"?"🛍️ Entregar comida":CUR.pkg.cod&&!CUR.codDone?`💶 Cobrar ${eur(CUR.pkg.cod)}`:CUR.pkg.dni?"🪪 DNI y firma":"✅ Entregar")}</div>`);}
     else if(st==="damaged")a=`<div class="dlg warn"><div class="who">⚠️ Incidencia: ${CUR.type==="comida"?"bolsa manchada":"paquete dañado"} · simulado</div>${CUR.type==="comida"?"«Oye, se ha volcado un poco la salsa en la bolsa…»":"«Oye, esta caja viene golpeada por una esquina…»"}</div><div class="acts">${btn("bDmgOk","b-pri","📝 Anotar incidencia y entregar")}${btn("bDmgRet","b-bad","↩️ El cliente no lo acepta: devolver")}</div>`;
     else if(st==="refused")a=`<div class="dlg warn"><div class="who">⚠️ Incidencia: rechazo · simulado</div>${CUR.pkg.cod?`«¿${eur(CUR.pkg.cod)}? Yo no pago eso, no lo quiero.»`:"«Yo no he pedido esto. No lo quiero.»"}</div><div class="acts">${btn("bRefOk","b-warn","↩️ Anotar rechazo y devolver")}${btn("bRefTry","b-blue","🗣️ Explicarle el envío")}</div>`;
@@ -1018,8 +1094,9 @@ function bind(){const b=(id,fn)=>{const e=$(id);if(e)e.onclick=fn;};
   b("bAddrNo",()=>finish("noentrega"));
   b("bW5",()=>{CUR.stage="wait5_run";render();startWait("wait5",300);});b("bW5no",()=>{CUR.msg=null;CUR.willAnswer=Math.random()<.4;CUR.stage="door";render();});
   b("bPort",()=>askPhoto("porteria"));b("bBuz",()=>askPhoto("buzon"));b("bAbs",()=>finish("ausente"));b("bRet",()=>finish("devuelto"));
-  b("bNeigh",()=>{CUR.neigh=neighbour(false);CUR.stage="neigh";say(CUR.neigh.txt);render();});b("bGiveN",()=>askPhoto("vecino",CUR.neigh.name+", "+CUR.neigh.fl));
+  b("bNeigh",()=>{CUR.neigh=neighbour(false);CUR.dress=CUR.neigh.dress||null;CUR.dressReact=null;CUR.dressMood=0;CUR.stage="neigh";say(CUR.neigh.txt);render();});b("bGiveN",()=>askPhoto("vecino",CUR.neigh.name+", "+CUR.neigh.fl));
   b("rP",()=>reply("profesional"));b("rS",()=>reply("simpatica"));b("rC",()=>reply("cortar"));b("bNext",afterConv);
+  b("vP",()=>vestReact("p"));b("vB",()=>vestReact("b"));b("vF",()=>vestReact("f"));b("vC",()=>vestReact("c"));
   b("bDmgOk",()=>{CUR.incDone=true;CUR.inc="danado";toast("Incidencia anotada en la PDA");afterConv();});b("bDmgRet",()=>{CUR.inc="danado";finish("rechazado");});
   b("bRefOk",()=>{CUR.inc="rechazo";finish("rechazado");});b("bRefTry",()=>{CUR.incDone=true;if(Math.random()<.5||F().refTry){toast("«Ah, vale, ya me acuerdo. Dámelo.»");afterConv();}else{CUR.inc="rechazo";finish("rechazado");}});
   const cod=t=>{CUR.codDone=true;snd("cash");toast(t);if(CUR.pkg.dni){CUR.stage="dni";render();}else finish("entregado");};
@@ -1072,7 +1149,7 @@ function migrateAlbaActions(){if(!CUR)return;const st=CUR.stage;
   if(CUR.wait&&CUR.wait.kind==="ret_moto")CUR.wait=null;
   save();}
 if(CUR){try{mapShow(CUR);}catch(e){}migrateAlbaActions();resumeWait();startClockTick();}
-window.PQ={sideUI,LEVELS,lvlIdx,ensurePanel,flatTarget,S:()=>S,CUR:()=>CUR,makeOffer,route,icWaitSec,bellWaitSec,walkToMotoSec,setProvider,PROVIDERS,DATA,SND_LOG,VOZ_LOG,ver:APP_VER,cuisineKey,FOOD_BY,hideToast,testSpeed,clockNow,fmtMMSS,waitLeft};
+window.PQ={sideUI,LEVELS,lvlIdx,ensurePanel,flatTarget,doorPerson,pickDress,S:()=>S,CUR:()=>CUR,makeOffer,route,icWaitSec,bellWaitSec,walkToMotoSec,setProvider,PROVIDERS,DATA,SND_LOG,VOZ_LOG,ver:APP_VER,cuisineKey,FOOD_BY,hideToast,testSpeed,clockNow,fmtMMSS,waitLeft};
 </script>
 </body>
 </html>
