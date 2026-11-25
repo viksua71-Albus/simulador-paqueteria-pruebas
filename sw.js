@@ -1,7 +1,7 @@
 // Service worker del Simulador Paquetería (caché propia "simpaqpruebas-", separada del Simulador Conductor).
 // La página se pide primero a la red (así llega cada versión nueva) y, sin red, se usa la copia guardada.
 // Mapas, rutas y lugares (teselas, OSRM, Photon) NO se interceptan.
-const VER = "1.2";
+const VER = "1.2.1";
 const CACHE = "simpaqpruebas-" + VER;
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-192.png", "./icons/maskable-512.png"];
 const CDN_PREFIX = "https://unpkg.com/leaflet@1.9.4/dist/";

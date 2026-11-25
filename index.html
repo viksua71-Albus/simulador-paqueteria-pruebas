@@ -110,13 +110,13 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
 <body data-tab="reparto">
 <div id="app">
   <div id="mapBox"><div id="map"></div><div id="mapOff">🗺️ Mapa no disponible sin conexión.<br>El reparto funciona igual con los botones.</div>
-    <div class="legend">🚐 ALBA · 🟡 recogida · 🔴 entrega · <span id="lgRt">ruta OSRM</span></div></div>
+    <div class="legend">🏍️ ALBA · 🟡 recogida · 🔴 entrega · <span id="lgRt">mapa de referencia</span></div></div>
   <div id="panel">
     <header>
-      <h1>📦 Simulador <span>Paquetería</span> España<span class="ver">v1.2</span></h1>
+      <h1>📦 Simulador <span>Paquetería</span> España<span class="ver">v1.2.1</span></h1>
       <div class="sim-badge">⚠️ SIMULACIÓN: personas, pagos, comida y diálogos ficticios · lugares reales (OSM)</div>
       <div class="hrow">
-        <span class="pill alba">👩 Repartidora: <b>ALBA</b></span>
+        <span class="pill alba">👩🏍️ Repartidora: <b>ALBA</b></span>
         <span class="pill clk" id="pClock">🕘 09:00</span>
         <span class="pill rain" id="pRain" title="Lluvia manual (simulada)">🌤️ Sin lluvia</span>
       </div>
@@ -154,13 +154,12 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
           <select id="selTime"><option value="auto">Según el reloj del juego</option><option value="manana">🌅 Mañana (más jubilados en casa)</option><option value="siesta">☀️ Siesta (gente descansando)</option><option value="tarde">🌆 Tarde (vuelven del trabajo)</option></select>
           <div class="chk"><span>🔊 Sonidos (portero, timbre, avisos)</span><input type="checkbox" id="chkSnd"></div>
           <div class="chk"><span>🗣️ Voz (lee avisos y frases)</span><input type="checkbox" id="chkVoz"></div>
-          <div class="chk"><span>⏩ Trayecto rápido (animación corta)</span><input type="checkbox" id="chkFast"></div>
-          <div class="sub" style="margin-top:6px">Sin micrófono. Partida propia (no se mezcla con el Simulador Conductor).</div>
+          <div class="sub" style="margin-top:6px">Sin micrófono. Partida propia (no se mezcla con el Simulador Conductor). ALBA reparte en moto. El mapa es solo una referencia: el trayecto lo haces tú.</div>
           <div class="row2"><button class="btn b-sec b-sm" id="btnExp">📤 Exportar</button><button class="btn b-sec b-sm" id="btnImp">📥 Importar</button></div>
           <input type="file" id="fileImp" accept=".json,application/json" hidden>
           <div class="acts"><button class="btn b-bad b-sm" id="btnReset">🗑️ Borrar partida</button></div>
         </div>
-        <div class="sec"><h2><span>ℹ️ Datos</span></h2><div class="sub">Municipios, calles, polígonos industriales, tiendas, restaurantes y estaciones reales de OpenStreetMap (ampliando la base del Simulador Conductor). Calle con portal en línea: Photon (OSM). Rutas: OSRM (demo pública). Naves, app de comida, personas, viviendas, mensajes e incidencias <b>simulados</b>.</div></div>
+        <div class="sec"><h2><span>ℹ️ Datos</span></h2><div class="sub">Municipios, calles, polígonos, tiendas, restaurantes y estaciones reales de OpenStreetMap. El mapa y la ruta (OSRM) son una referencia: ALBA va en moto y el trayecto lo haces tú. Naves, app de comida, personas, viviendas, mensajes e incidencias <b>simulados</b>. Las esperas (portero, timbre, cocina, ascensor, escaleras, cita) van a tiempo real.</div></div>
       </div>
     </div>
   </div>
@@ -169,7 +168,7 @@ details.more summary{cursor:pointer;color:var(--acc2);font-size:12.5px;margin-to
 <div id="toast"></div>
 <script>
 "use strict";
-const APP_VER="1.2";
+const APP_VER="1.2.1";
 const HTTP=location.protocol==="http:"||location.protocol==="https:";
 if(HTTP){for(const [rel,href] of [["manifest","manifest.webmanifest"],["icon","icons/icon-192.png"],["apple-touch-icon","icons/icon-192.png"]]){const l=document.createElement("link");l.rel=rel;l.href=href;document.head.appendChild(l);}
   if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});}
@@ -187,16 +186,27 @@ const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 const wpick=P=>{const t=P.reduce((s,x)=>s+Math.max(0,x[1]),0);if(t<=0)return P[0][0];let r=Math.random()*t;for(const [v,w] of P){r-=Math.max(0,w);if(r<=0)return v;}return P[P.length-1][0];};
 const gw=(m,f,g)=>g==="f"?f:m;
 const F=()=>window.PQ_FORCE||{};
+function testSpeed(){const f=F();if(f.testSpeed!=null&&+f.testSpeed>0)return +f.testSpeed;try{const q=new URLSearchParams(location.search||"").get("testspeed");if(q!=null&&+q>0)return +q;}catch(e){}if(window.PQ_TESTSPEED!=null&&+window.PQ_TESTSPEED>0)return +window.PQ_TESTSPEED;return 1;}
+function wallNow(){return Date.now();}
+function elapsedSec(t0){return Math.max(0,(wallNow()-(t0||wallNow()))/1000*testSpeed());}
+function fmtMMSS(sec){sec=Math.max(0,Math.ceil(sec||0));const m=Math.floor(sec/60),s=sec%60;return String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");}
+function clockNow(){if(!S.liveAt)return S.clock;return S.clock+elapsedSec(S.liveAt)/60;}
+function startLiveClock(){if(!S.liveAt){S.liveAt=wallNow();save();}startClockTick();}
+function commitLiveClock(){if(S.liveAt){S.clock=clockNow();S.liveAt=null;save();}hdrUI();}
+let CLK=null;
+function startClockTick(){if(CLK)return;CLK=setInterval(()=>{hdrUI();if(CUR){maybeShowApproachMsg();if(CUR.wait)tickWait();}},250);}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")save();else{hdrUI();if(CUR&&CUR.wait)tickWait();}});
+
 function hav(a,b){const R=6371,t=x=>x*Math.PI/180,dl=t(b[0]-a[0]),dn=t(b[1]-a[1]);const x=Math.sin(dl/2)**2+Math.cos(t(a[0]))*Math.cos(t(b[0]))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
 const hm=m=>{m=((Math.round(m)%1440)+1440)%1440;return String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0");};
 
 // ---------- Partida propia (localStorage separado del Simulador Conductor) ----------
 const LS="simPaqueteriaV1";
-const S0=()=>({ver:APP_VER,zone:"madrid",pos:null,day:1,clock:540,rain:false,snd:true,voz:false,fast:false,timeMode:"auto",mode:"mixto",mapProv:0,history:[],regulars:{},retries:[],claims:[],cur:null});
-let S=S0();
-try{const raw=localStorage.getItem(LS);if(raw)S=Object.assign(S0(),JSON.parse(raw));}catch(e){}
-S.cur=null;if(!["mixto","paqueteria","comida"].includes(S.mode))S.mode="mixto";
-function save(){try{localStorage.setItem(LS,JSON.stringify(Object.assign({},S,{cur:null})));}catch(e){}}
+const S0=()=>({ver:APP_VER,zone:"madrid",pos:null,day:1,clock:540,liveAt:null,rain:false,snd:true,voz:false,timeMode:"auto",mode:"mixto",mapProv:0,history:[],regulars:{},retries:[],claims:[],cur:null});
+let S=S0();let _savedCur=null;
+try{const raw=localStorage.getItem(LS);if(raw)S=Object.assign(S0(),JSON.parse(raw));_savedCur=S.cur||null;}catch(e){}
+if(!["mixto","paqueteria","comida"].includes(S.mode))S.mode="mixto";
+function save(){try{localStorage.setItem(LS,JSON.stringify(Object.assign({},S,{clock:S.clock,liveAt:S.liveAt||null,cur:CUR||null})));}catch(e){}}
 let toastT=0;function hideToast(){const e=$("toast");if(!e)return;e.style.display="none";e.textContent="";clearTimeout(toastT);}function toast(m){const e=$("toast");e.textContent=m;e.style.display="block";clearTimeout(toastT);toastT=setTimeout(hideToast,3200);}
 
 // ---------- Sonido (WebAudio) y voz opcional ----------
@@ -217,9 +227,9 @@ const VOZ_LOG=[];
 function say(t){if(!t)return;VOZ_LOG.push({t,on:!!S.voz});if(!S.voz||!("speechSynthesis" in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(String(t).replace(/[«»]/g,""));u.lang="es-ES";u.rate=1.03;speechSynthesis.speak(u);}catch(e){}}
 
 // ---------- Reloj y franja ----------
-function slot(){if(S.timeMode!=="auto")return S.timeMode;const h=S.clock/60;return h<14?"manana":h<18?"siesta":"tarde";}
+function slot(){if(S.timeMode!=="auto")return S.timeMode;const h=clockNow()/60;return h<14?"manana":h<18?"siesta":"tarde";}
 const SLOT_N={manana:"🌅 Mañana",siesta:"☀️ Siesta",tarde:"🌆 Tarde"};
-function hdrUI(){$("pClock").textContent=`🕘 ${hm(S.clock)} · ${SLOT_N[slot()]}`;$("pRain").textContent=S.rain?"🌧️ Llueve (sim.)":"🌤️ Sin lluvia";$("pRain").classList.toggle("on",!!S.rain);$("dayN").textContent=S.day;}
+function hdrUI(){const ck=clockNow();$("pClock").textContent=`🕘 ${hm(ck)} · ${SLOT_N[slot()]}`;$("pRain").textContent=S.rain?"🌧️ Llueve (sim.)":"🌤️ Sin lluvia";$("pRain").classList.toggle("on",!!S.rain);$("dayN").textContent=S.day;}
 
 // ---------- Zonas y lugares reales ----------
 const ZONES=DATA.zones;
@@ -260,7 +270,7 @@ if(HAS_L){try{
   map=L.map("map",Object.assign({zoomControl:true},window.PQ_MOB?{renderer:L.svg({padding:0}),zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false}:{})).setView(S.pos,13);
   setProvider(provIdx,true);
   map.attributionControl.addAttribution('Rutas: <a href="https://project-osrm.org/">OSRM</a> (demo pública) · Lugares: <a href="https://photon.komoot.io/">Photon</a> · datos &copy; OpenStreetMap');
-  albaMk=L.marker(S.pos,{icon:L.divIcon({className:"alba-ic",html:"🚐",iconSize:[28,28],iconAnchor:[14,14]}),zIndexOffset:1000}).addTo(map).bindTooltip("ALBA");
+  albaMk=L.marker(S.pos,{icon:L.divIcon({className:"alba-ic",html:"🏍️",iconSize:[28,28],iconAnchor:[14,14]}),zIndexOffset:1000}).addTo(map).bindTooltip("ALBA · moto");
 }catch(e){console.warn("Mapa:",e);map=null;}}
 if(!map)$("mapOff").style.display="flex";
 function mapAlba(){if(albaMk)albaMk.setLatLng(S.pos);}
@@ -279,7 +289,7 @@ async function route(a,b){
   if(!F().noNet)for(const base of ROUTERS){try{const r=await fetchT(base+`${a[1].toFixed(5)},${a[0].toFixed(5)};${b[1].toFixed(5)},${b[0].toFixed(5)}?overview=full&geometries=geojson`,6000);
     if(!r.ok)continue;const j=await r.json();if(j.code!=="Ok"||!j.routes.length)continue;
     let geo=j.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]);if(geo.length>600){const st=geo.length/600,o=[];for(let k=0;k<geo.length;k+=st)o.push(geo[Math.floor(k)]);o.push(geo[geo.length-1]);geo=o;}
-    return {km:j.routes[0].distance/1000,min:j.routes[0].duration*1.2/60,geo,real:true};}catch(e){}}
+    return {km:j.routes[0].distance/1000,min:j.routes[0].duration/60,geo,real:true};}catch(e){}}
   const km=hav(a,b)*1.3;return {km,min:Math.max(2,km/28*60),geo:[a,b],real:false};}
 async function realStreet(c){if(F().noNet)return null;try{const r=await fetchT(`https://photon.komoot.io/reverse?lat=${c[0].toFixed(5)}&lon=${c[1].toFixed(5)}&limit=1&lang=default`,5000);if(!r.ok)return null;const j=await r.json();const f=j.features&&j.features[0];if(!f)return null;
   const p=f.properties||{},st=p.street||(p.osm_key==="highway"?p.name:null);if(!st)return null;const g=f.geometry.coordinates;return {street:st,hn:p.housenumber||"",city:p.city||p.town||p.village||p.locality||"",c:[g[1],g[0]]};}catch(e){return null;}}
@@ -344,8 +354,8 @@ function makeHousing(place){const pop=place.pop||20000;let W;
 // ---------- Empresas, tipos de envío y comida (simulado) ----------
 const COS={amazon:{n:"Amazon",bg:"#ff9900",fg:"#111",base:1.55,w:28},seur:{n:"SEUR",bg:"#e2001a",fg:"#fff",base:2.05,w:20},cex:{n:"Correos Express",bg:"#ffcd00",fg:"#00205b",base:1.9,w:18},gls:{n:"GLS",bg:"#061ab1",fg:"#ffd100",base:1.8,w:17},mrw:{n:"MRW",bg:"#d6001c",fg:"#fff",base:2.15,w:17},repartoya:{n:"RepartoYa",bg:"#00a878",fg:"#fff",base:2.4,w:0}};
 const TYPES={normal:{n:"Entrega normal",ic:"📦"},urgente:{n:"Urgente",ic:"⚡"},cita:{n:"Con cita (franja)",ic:"🗓️"},tienda:{n:"Pedido tienda local",ic:"🛍️"},particular:{n:"Entre particulares",ic:"🤝"},recogida:{n:"Recogida de devolución",ic:"↩️"},pudo:{n:"A punto de recogida",ic:"🏪"},comida:{n:"Comida a domicilio",ic:"🍔"}};
-const SIZES={sobre:{n:"Sobre",ic:"✉️",w:[.1,.8]},caja:{n:"Caja",ic:"📦",w:[.9,6.5]},bulto:{n:"Bulto grande",ic:"🧳",w:[6.6,19.5]},bolsa:{n:"Bolsa térmica",ic:"🛍️",w:[.6,2.8]}};
-const ITEMS={sobre:["Documentación certificada","Accesorios de móvil","Llaves o tarjeta","Pedido de farmacia","Prenda ligera"],caja:["Ropa (pedido online)","Zapatillas","Móvil o tablet","Libros","Pequeño electrodoméstico","Regalo envuelto","Cosmética"],bulto:["Monitor","Silla desmontada","Compra grande","Maleta","Herramientas","Lote de vino"]};
+const SIZES={sobre:{n:"Sobre",ic:"✉️",w:[.1,.8]},caja:{n:"Caja",ic:"📦",w:[.9,5]},bulto:{n:"Caja grande (baúl)",ic:"📦",w:[3.5,8]},bolsa:{n:"Bolsa térmica",ic:"🛍️",w:[.6,2.8]}};
+const ITEMS={sobre:["Documentación certificada","Accesorios de móvil","Llaves o tarjeta","Pedido de farmacia","Prenda ligera"],caja:["Ropa (pedido online)","Zapatillas","Móvil o tablet","Libros","Pequeño electrodoméstico","Regalo envuelto","Cosmética"],bulto:["Caja de zapatos (varios pares)","Herramientas compactas","Lote de libros","Tostadora u otro pequeño aparato"]};
 const FOOD_BY={kebab:["Menú kebab completo con bebida","Döner y patatas","Durum mixto y ayran","Shawarma de pollo con salsa"],pizza:["Pizza familiar + 2 refrescos","Pizza carbonara y aros de cebolla","Media pizza y entrante"],burger:["2 hamburguesas completas y patatas","Hamburguesa doble con cheddar y patatas","Menú burger y aros"],sushi:["Menú sushi (16 piezas) y gyozas","Poke bowl de salmón y té frío","Nigiris y roll uramaki"],chino:["Pad thai y rollitos","Arroz tres delicias y pollo al limón","Tallarines salteados y wonton","Menú chifa y té"],tapas:["Tabla de tapas variadas","Tortilla, bravas y caña","Ración de croquetas y pan","Paella individual y ensalada"],mexicana:["Tacos variados y guacamole","Burritos y nachos","Quesadillas y pico de gallo"],india:["Pollo tikka masala y naan","Curry de verduras y arroz basmati","Menú thali y lassi"],italiana:["Pasta carbonara y ensalada","Lasaña y pan de ajo","Risotto y tiramisú para llevar"],pollo:["Pollo asado con patatas y alioli","Alitas y muslos con salsa","Menú de pollo broaster"],bocadillos:["2 bocadillos recién hechos","Bocadillo mixto y zumo","Sándwich club y patatas"],cafe:["Café, tostada y zumo","Pedido de pastelería y café","2 cafés y porción de tarta","Helado y gofre (para llevar)"],pescado:["Pescado frito y ensalada","Mariscada pequeña y pan","Arroz caldoso de pescado"],griega:["Gyros y ensalada griega","Souvlaki con patatas y tzatziki"],parrilla:["Entrecot a la brasa y patatas","Parrillada y ensalada","Choripán y empanadas"],peruana:["Ceviche y chicha morada","Lomo saltado y arroz","Ají de gallina para llevar"],vegana:["Bowl vegano y hummus","Hamburguesa vegetal y ensalada"],generic:["Menú del día","Pedido variado","Menú combinado con bebida","Comida del día para llevar"]};
 const CUI_TAG=[[/kebab|doner|doerner|shawarma|turkish|turc|lebanese|lebanesa|middle_eastern|syrian|kurdish|iraqi|arabic|arabe|moroccan|marroqui|couscous|falafel/,"kebab"],[/pizza/,"pizza"],[/burger|hamburger/,"burger"],[/sushi|japanese|japon|ramen|poke|yakitori|udon|sashimi/,"sushi"],[/chinese|chino|chifa|thai|vietnam|korean|corea|asian|oriental|noodle|wok/,"chino"],[/mexican|mexicana|tex-mex|taco|burrito/,"mexicana"],[/indian|india|pakistani|bangladeshi|curry|nepalese|sri_lankan|tandoori/,"india"],[/chicken|pollo|fried_chicken|wings/,"pollo"],[/sandwich|bocadillo|baguette/,"bocadillos"],[/seafood|fish|pescado|marisco|fish_and_chips/,"pescado"],[/greek|griego|gyros|souvlaki/,"griega"],[/peruvian|peruana|ceviche/,"peruana"],[/italian|italiana|pasta|risotto/,"italiana"],[/steak|grill|barbecue|bbq|argentin|brazil|churrasco|rodizio|\bmeat\b|asado|parrilla/,"parrilla"],[/spanish|espanol|tapas|regional|catalan|basque|galician|andalusian|paella|mediterranean/,"tapas"],[/cafe|coffee|cake|pastry|bakery|ice_cream|dessert|waffle|crepe|breakfast|tea|chocolate|churro|helado/,"cafe"],[/vegan|vegetarian|vegano/,"vegana"]];
 const CUI_NAME=[[/kebab|kebap|doner|doerner|shawarma|durum|nemrut|istanbul|turc|turqu|ottoman|beyti|adana|ocakbasi|kofte|falafel/,"kebab"],[/pizza|pizzer/,"pizza"],[/burger|hamburg|mcdonald|goiko|five guys/,"burger"],[/sushi|ramen|poke|japon|japan|nikkei|yakitori|sashimi|uramaki/,"sushi"],[/chifa|\bchin[oa]\b|thai|vietnam|wok|\basia\b|oriental|shanghai|pekin|beijing|cantones/,"chino"],[/taco|burrito|mexic|tequila|cantina|guacamole|tex-?mex/,"mexicana"],[/india|tandoori|curry|punjab|namaste|pakistan/,"india"],[/poll[eo]|poller|\bkfc\b|kentucky|broaster|campero/,"pollo"],[/bocadillo|bocata|sandwich|montaditos|panini|entrepan/,"bocadillos"],[/marisc|pescad|\bpeix\b|seafood|cevicher/,"pescado"],[/griego|greek|souvlaki|gyros|heleno/,"griega"],[/\bperu|\binca[s]?\b|andino|ceviche/,"peruana"],[/trattori|osteria|ristorante|\bpasta\b|lasa[nñ]a|italian/,"italiana"],[/parrill|asador|argentin|churrasc|rodizio|steak|\bbrasa\b|\bangus\b/,"parrilla"],[/tapas|\btasca\b|taberna|\bmeson\b|sidrer|paella|raciones|cervecer/,"tapas"],[/caf[eé]|cafeter|pastel|panader|helader|gelato|ice cream|starbucks|churrer|chocolater|\bcakes?\b/,"cafe"],[/vegan|vegetari/,"vegana"]];
@@ -354,7 +364,7 @@ function cuisineKey(pu){const name=foldCui(pu&&(pu.name||pu.n)||"");const cui=fo
 function pickDish(pu){const k=cuisineKey(pu);return pick(FOOD_BY[k]||FOOD_BY.generic);}
 function makePkg(type,pu){
   if(type==="comida")return {size:"bolsa",item:pickDish(pu),cuisine:cuisineKey(pu),kg:num1(rnd(.7,2.4))+" kg",frag:false,cod:Math.random()<.12?wpick([[16.5,40],[22.9,35],[31.5,25]]):0,codIssue:"exacto",dni:false,track:"FD"+rndI(1e6,9.99e6)};
-  const sz=type==="recogida"?wpick([["caja",70],["bulto",20],["sobre",10]]):type==="tienda"?wpick([["caja",55],["sobre",45]]):wpick([["sobre",24],["caja",56],["bulto",20]]);
+  const sz=type==="recogida"?wpick([["caja",80],["bulto",5],["sobre",15]]):type==="tienda"?wpick([["caja",55],["sobre",45]]):wpick([["sobre",30],["caja",65],["bulto",5]]);
   const it=pick(ITEMS[sz]),cod=type==="normal"||type==="urgente"||type==="cita"?(Math.random()<.22?wpick([[14.9,25],[24.5,25],[38,20],[54.9,15],[89,10],[125,5]]):0):0;
   return {size:sz,item:it,kg:num1(rnd(...SIZES[sz].w))+" kg",frag:sz!=="sobre"&&Math.random()<.25,cod,codIssue:cod?wpick([["exacto",45],["sin_cambio",35],["regateo",20]]):null,
     dni:cod>0||sz==="bulto"||/certificada|Móvil/.test(it)||Math.random()<.38,track:"ES"+rndI(1e8,9.99e8)};}
@@ -394,6 +404,7 @@ function L2pudo(L){const P=L.filter(p=>p.k==="pudo"&&hav(S.pos,p.c)<=15);return 
 
 // ---------- Ofertas ----------
 let CUR=null,ANIM=null,WT=null;
+if(_savedCur)CUR=_savedCur;
 function card(h){$("card").innerHTML=h;}
 async function makeOffer(){
   hideToast();
@@ -467,38 +478,37 @@ function planInc(type){const f=F();if(f.incident!==undefined)return f.incident;i
   return x<.07?"direccion":x<.13?"danado":x<.18?"rechazo":null;}
 const MSG_TXT={bajando:"Estoy bajando, ¡espérame en el portal! 🏃",espera5:"Llego en 5 minutos, ¿me esperas, porfa?",vecino2:"No estoy. Déjalo al vecino del 2.º, ya le he avisado 🙏",porteria:"Déjalo en portería, que el conserje me lo guarda.",buzon:"Si es un sobre, déjalo en el buzón, gracias.",puerta_comida:"¡Hola! Cuando llegues toca al timbre, estoy en casa."};
 
-// ---------- Trayecto en 2 tramos (Recogida -> Entrega) ----------
-function accept(){if(!CUR||CUR.stage!=="offer")return;CUR.stage="ready_pu";mapShow(CUR);snd("ok");render();}
-function reject(){CUR=null;mapClear();toast("Pedido rechazado");render();}
-function driveLeg(R,isPickup){
-  CUR.stage=isPickup?"driving_pu":"driving";CUR.prog=0;CUR.arrivedReady=false;render();
-  const geo=R.geo,cum=[0];for(let i=1;i<geo.length;i++)cum.push(cum[i-1]+hav(geo[i-1],geo[i]));const tot=cum[cum.length-1]||1;
-  const dur=F().instant?350:(S.fast?2000:clamp(R.min*550,3500,9500));const t0=performance.now();let msgShown=false;
-  clearInterval(ANIM);ANIM=setInterval(()=>{const p=clamp((performance.now()-t0)/dur,0,1);CUR.prog=p;const d=p*tot;let i=1;while(i<cum.length-1&&cum[i]<d)i++;
-    const a=geo[i-1],b=geo[i],seg=(cum[i]-cum[i-1])||1,t=clamp((d-cum[i-1])/seg,0,1);S.pos=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];mapAlba();
-    const bar=$("drvBar");if(bar)bar.style.width=Math.round(p*100)+"%";const lt=$("drvLeft");if(lt)lt.textContent=`${num1(R.km*(1-p))} km · ${Math.round(R.min*(1-p))} min`;
-    if(!isPickup&&!msgShown&&p>=.75&&CUR.msg){msgShown=true;CUR.msgShown=true;snd("msg");say(`Mensaje de ${CUR.rcp.nom}: ${MSG_TXT[CUR.msg]}`);render();}
-    if(p>=1){clearInterval(ANIM);CUR.arrivedReady=true;S.pos=(isPickup?CUR.pu.c:CUR.dest).slice();mapAlba();render();}},window.PQ_MOB?200:80);}
-function arrivePickup(){if(!CUR||!CUR.arrivedReady)return;S.clock+=Math.round(CUR.R1.min)+1;hdrUI();
+// ---------- Tramos de referencia (el trayecto lo hace el jugador; sin barra ni espera) ----------
+function arrPuLabel(){const k=CUR.pu&&CUR.pu.kind,ty=CUR.type;if(ty==="comida"||k==="food")return "📍 He llegado al restaurante";if(k==="shop")return "📍 He llegado a la tienda";if(k==="ind")return "📍 He llegado a la nave";return "📍 He llegado a la recogida";}
+function arrDelLabel(){if(CUR.type==="recogida")return "📍 He llegado a la nave";if(CUR.type==="pudo")return "📍 He llegado al punto de recogida";return "📍 He llegado a la entrega";}
+function beginLeg(isPickup){startLiveClock();CUR.stage=isPickup?"leg_pu":"leg_del";CUR.legAt=wallNow();if(isPickup)CUR.msgShown=false;save();mapShow(CUR);render();}
+function accept(){if(!CUR||CUR.stage!=="offer")return;snd("ok");beginLeg(true);}
+function reject(){commitLiveClock();CUR=null;mapClear();toast("Pedido rechazado");save();render();}
+function maybeShowApproachMsg(){if(!CUR||CUR.msgShown||!CUR.msg||CUR.stage!=="leg_del"||!CUR.legAt)return;
+  const need=F().msgAfterSec!=null?F().msgAfterSec:(CUR.R2.min*60)*0.75;
+  if(elapsedSec(CUR.legAt)>=need){CUR.msgShown=true;snd("msg");say(`Mensaje de ${CUR.rcp.nom}: ${MSG_TXT[CUR.msg]}`);save();render();}}
+function showPickupTalk(){
+  if(CUR.type==="comida")CUR.puLine=CUR.prepSec? "«¡Listo y bien caliente! Ten cuidado con el baúl de la moto.»":"«¡Justo a tiempo, ALBA! Ya está preparado para el baúl de la moto.»";
+  else if(CUR.pu.kind==="ind")CUR.puLine=`«Buenas ALBA, aquí tienes el paquete de ${COS[CUR.co].n} ya escaneado. Que te vaya bien con la moto.»`;
+  else if(CUR.pu.kind==="shop")CUR.puLine=`«¡Hola ALBA! Este es el pedido de ${CUR.pu.name}. Cabe bien en el baúl.»`;
+  else CUR.puLine=`«Hola, aquí tienes el paquete bien cerrado. Va para ${CUR.rcp.nom}.»`;
+  snd("ok");say(CUR.puLine);CUR.puDone=true;beginLeg(false);}
+function startHandlePu(){const hs=F().handleSec!=null?F().handleSec:rndI(5,10);
+  if(hs>0){CUR.stage="handle_pu";CUR.handleSec=hs;save();render();startWait("handle",hs);}else showPickupTalk();}
+function arrivePickup(){if(!CUR||CUR.stage!=="leg_pu")return;S.pos=CUR.pu.c.slice();mapAlba();
   if(CUR.type==="recogida"){CUR.puDone=true;mapShow(CUR);startDoor();return;}
   if(CUR.type==="comida"){
-    const prep=F().prepSec!=null?F().prepSec:(Math.random()<.65?rndI(6,24):0);
-    if(prep>0){CUR.stage="food_prep";CUR.prepSec=prep;CUR.prepLine=`«¡Hola ALBA! Está saliendo de cocina, espera unos ${prep} s…»`;say(CUR.prepLine);render();
-      timer(F().instant?150:clamp(prep*90,700,2400),p=>{const b=$("wBar");if(b)b.style.width=Math.round(p*100)+"%";const c=$("wClk");if(c)c.textContent=Math.round(p*prep)+" s";},()=>{
-        S.clock+=Math.max(1,Math.round(prep/5));hdrUI();CUR.stage="pickup";CUR.puLine="«¡Listo y bien caliente! Ten cuidado con la bolsa térmica.»";snd("ok");say(CUR.puLine);render();});return;}
-    CUR.stage="pickup";CUR.puLine="«¡Justo a tiempo, ALBA! Ya está preparado para llevar.»";snd("ok");say(CUR.puLine);render();return;}
-  CUR.stage="pickup";
-  if(CUR.pu.kind==="ind")CUR.puLine=`«Buenas ALBA, aquí tienes el paquete de ${COS[CUR.co].n} ya escaneado. ¡Buena ruta!»`;
-  else if(CUR.pu.kind==="shop")CUR.puLine=`«¡Hola ALBA! Este es el pedido de ${CUR.pu.name}. ¡Gracias por pasarte!»`;
-  else CUR.puLine=`«Hola, aquí tienes el paquete bien cerrado. Va para ${CUR.rcp.nom}.»`;
-  snd("ok");say(CUR.puLine);render();}
-function departDelivery(){if(!CUR)return;CUR.puDone=true;mapShow(CUR);driveLeg(CUR.R2,false);}
-function arriveDelivery(){if(!CUR||!CUR.arrivedReady)return;S.clock+=Math.round(CUR.R2.min)+2;CUR.arriveAt=S.clock;hdrUI();
-  if(CUR.type==="urgente"&&S.clock>CUR.deadline)CUR.late=true;
-  if(CUR.type==="comida"&&(F().foodCold||S.clock>CUR.deadline)){CUR.late=true;CUR.cold=true;}
+    const prep=F().prepSec!=null?F().prepSec:(Math.random()<.65?rndI(8,40):0);
+    if(prep>0){CUR.stage="food_prep";CUR.prepSec=prep;CUR.prepLine="«¡Hola ALBA! Está saliendo de cocina, espera un momento…»";say(CUR.prepLine);save();render();startWait("prep",prep);return;}
+  }
+  startHandlePu();}
+function arriveDelivery(){if(!CUR||!(CUR.stage==="leg_del"||CUR.stage==="pickup"||CUR.stage==="ready_ret"))return;
+  CUR.puDone=true;S.pos=CUR.dest.slice();mapAlba();mapShow(CUR);CUR.arriveAt=clockNow();hdrUI();
+  if(CUR.type==="urgente"&&clockNow()>CUR.deadline)CUR.late=true;
+  if(CUR.type==="comida"&&(F().foodCold||clockNow()>CUR.deadline)){CUR.late=true;CUR.cold=true;}
   if(CUR.type==="pudo"||CUR.type==="recogida"){CUR.stage="pudo";return render();}
-  if(CUR.type==="cita"&&S.clock<CUR.win[0]){CUR.stage="cita_early";return render();}
-  if(CUR.type==="cita"&&S.clock>CUR.win[1])CUR.late=true;
+  if(CUR.type==="cita"&&clockNow()<CUR.win[0]){CUR.stage="cita_early";return render();}
+  if(CUR.type==="cita"&&clockNow()>CUR.win[1])CUR.late=true;
   startDoor();}
 function startDoor(){
   if(CUR.incident==="direccion"&&!CUR.incDone){CUR.stage="addr";return render();}
@@ -510,31 +520,52 @@ function startDoor(){
   if(CUR.housing.looseDog)snd("dog");
   CUR.stage="door";render();}
 
-// ---------- Portero automático, ascensor/escaleras y timbre (tiempos siempre variables) ----------
+// ---------- Portero, ascensor, escaleras y timbre (tiempo real 1:1) ----------
 let LAST_IC=0,LAST_BELL=0;
-function icWaitSec(){if(F().icSec!=null)return F().icSec;const e=CUR.rcp.edad;let a=3,b=15;if(e>=65){a=8;b=22;}else if(CUR.rcp.ch.k==="prisa"){a=2;b=9;}else if(Math.random()<.16){a=1;b=2;}
+function icWaitSec(){if(F().icSec!=null)return F().icSec;const e=CUR.rcp.edad;let a=4,b=16;if(e>=65){a=8;b=22;}else if(CUR.rcp.ch.k==="prisa"){a=3;b=9;}else if(Math.random()<.16){a=2;b=4;}
   let s=rndI(a,b);if(s===LAST_IC)s=s<b?s+1:s-1;LAST_IC=s;return s;}
-function bellWaitSec(){if(F().waitSec!=null)return F().waitSec;const e=CUR.rcp.edad;let a=4,b=24;if(e>=65){a=10;b=32;}else if(CUR.ts==="siesta"){a=9;b=36;}else if(CUR.rcp.ch.k==="prisa"){a=3;b=12;}else if(Math.random()<.15){a=2;b=3;}
+function bellWaitSec(){if(F().waitSec!=null)return F().waitSec;const e=CUR.rcp.edad;let a=5,b=24;if(e>=65){a=10;b=32;}else if(CUR.ts==="siesta"){a=9;b=36;}else if(CUR.rcp.ch.k==="prisa"){a=4;b=12;}else if(Math.random()<.15){a=3;b=5;}
   let s=rndI(a,b);if(s===LAST_BELL||s===CUR.icSec)s=s<b?s+1:s-1;LAST_BELL=s;return s;}
-function timer(ms,onTick,onEnd){const t0=performance.now();clearInterval(WT);WT=setInterval(()=>{const p=clamp((performance.now()-t0)/ms,0,1);onTick(p);if(p>=1){clearInterval(WT);onEnd();}},50);}
-function intercom(){if(!CUR||CUR.stage!=="door"||!isPisoH(CUR.housing))return;snd("intercom");CUR.stage="ic_wait";const s=icWaitSec();CUR.icSec=s;render();
-  timer(F().instant?150:clamp(s*95,550,1900),p=>{const b=$("wBar");if(b)b.style.width=Math.round(p*100)+"%";const c=$("wClk");if(c)c.textContent=Math.round(p*s)+" s";},()=>{const f=F();
-    if(CUR.housing.porter&&(f.porter||(!f.noPorter&&Math.random()<.36))){CUR.stage="porter";CUR.icMsg="«Portería, dígame. Si quiere déjemelo aquí, o suba en el ascensor.»";}
-    else if(CUR.willAnswer||f.intercomOpens||Math.random()<.32){
-      const ask=f.icAsk!=null?f.icAsk:Math.random()<.35;
-      if(ask){CUR.stage="ic_ask";CUR.icMsg="«¿Diga? ¿Quién es?»";}
-      else{CUR.stage="building_up";CUR.icMsg=`«¿${CUR.type==="comida"?"La comida":"Paquetería"}? ¡Pase, ya le abro!»`;snd("ok");}
-    }else{CUR.stage="nohome";CUR.icMsg=`Nadie contesta al portero automático (tras ${s} s).`;snd("bad");}
-    say(CUR.icMsg);render();});}
-function replyIntercom(){if(!CUR||CUR.stage!=="ic_ask")return;CUR.stage="building_up";CUR.icMsg="«¡Ah, perfecto! Pase, le abro el portal.»";snd("ok");say(CUR.icMsg);render();}
+function liftSec(fl){if(F().liftSec!=null)return F().liftSec;return 4+fl*4;}
+function stairsSec(fl){if(F().stairsSec!=null)return F().stairsSec;return fl*15;}
+const WAIT_END={
+  prep:()=>startHandlePu(),
+  handle:()=>showPickupTalk(),
+  ic:endIcWait,
+  bell:endBellWait,
+  lift:()=>{CUR.stage="flat_door";save();render();},
+  stairs:()=>{CUR.stage="flat_door";save();render();},
+  cita:endCitaWait,
+  wait5:endWait5
+};
+function waitLeft(){if(!CUR||!CUR.wait)return 0;return Math.max(0,CUR.wait.sec-elapsedSec(CUR.wait.t0));}
+function paintWait(){if(!CUR||!CUR.wait)return;const sec=CUR.wait.sec||1,left=waitLeft(),p=clamp(1-left/sec,0,1);
+  const b=$("wBar");if(b)b.style.width=Math.round(p*100)+"%";const c=$("wClk");if(!c)return;
+  if(CUR.stage==="lift_wait"||CUR.stage==="stairs_wait"){const fl=CUR.housing.floor||3,per=sec/Math.max(1,fl),floor=Math.max(1,Math.min(fl,Math.floor((sec-left)/per)+1));c.textContent=fmtMMSS(left)+" · "+floor+".º";}
+  else c.textContent=fmtMMSS(left);}
+function tickWait(){if(!CUR||!CUR.wait)return;paintWait();if(waitLeft()<=0){const kind=CUR.wait.kind,fn=WAIT_END[kind];CUR.wait=null;save();if(fn)fn();}}
+function startWait(kind,sec){CUR.wait={kind,sec,t0:wallNow()};save();startClockTick();startLiveClock();paintWait();clearInterval(WT);WT=setInterval(()=>tickWait(),200);}
+function resumeWait(){if(!CUR||!CUR.wait)return;startClockTick();startLiveClock();tickWait();if(CUR&&CUR.wait){clearInterval(WT);WT=setInterval(()=>tickWait(),200);}}
+function endIcWait(){const f=F(),s=CUR.icSec||0;
+  if(CUR.housing.porter&&(f.porter||(!f.noPorter&&Math.random()<.36))){CUR.stage="porter";CUR.icMsg="«Portería, dígame. Si quiere déjemelo aquí, o suba en el ascensor.»";}
+  else if(CUR.willAnswer||f.intercomOpens||Math.random()<.32){
+    const ask=f.icAsk!=null?f.icAsk:Math.random()<.35;
+    if(ask){CUR.stage="ic_ask";CUR.icMsg="«¿Diga? ¿Quién es?»";}
+    else{CUR.stage="building_up";CUR.icMsg=`«¿${CUR.type==="comida"?"La comida":"Paquetería"}? ¡Pase, ya le abro!»`;snd("ok");}
+  }else{CUR.stage="nohome";CUR.icMsg=`Nadie contesta al portero automático (tras ${s} s).`;snd("bad");}
+  say(CUR.icMsg);save();render();}
+function endBellWait(){const s=CUR.bellSec||0;
+  if(CUR.willAnswer){CUR.stage="conv";const txt=openLine(false);const icT=CUR.icSec?` (portero ${CUR.icSec} s)`:"";
+    CUR.log=[{who:`${CUR.rcp.name} · abre tras ${s} s${icT}`,cls:isFlirt(CUR.rcp)?"flirt":"",txt}];say(txt);}else{CUR.stage="nohome";snd("bad");}save();render();}
+function endCitaWait(){S.clock=Math.max(clockNow(),CUR.win[0]);S.liveAt=wallNow();save();hdrUI();startDoor();}
+function endWait5(){CUR.willAnswer=true;CUR.msg=null;CUR.stage="door";save();render();}
+function intercom(){if(!CUR||CUR.stage!=="door"||!isPisoH(CUR.housing))return;snd("intercom");CUR.stage="ic_wait";const s=icWaitSec();CUR.icSec=s;render();startWait("ic",s);}
+function replyIntercom(){if(!CUR||CUR.stage!=="ic_ask")return;CUR.stage="building_up";CUR.icMsg="«¡Ah, perfecto! Pase, le abro el portal.»";snd("ok");say(CUR.icMsg);save();render();}
 function goUp(){if(!CUR||!["building_up","porter"].includes(CUR.stage))return;
-  if(CUR.housing.lift){CUR.stage="lift_wait";const fl=CUR.housing.floor||3;render();
-    timer(F().instant?120:clamp(fl*260,700,1900),p=>{const b=$("wBar");if(b)b.style.width=Math.round(p*100)+"%";const c=$("wClk");if(c)c.textContent=Math.max(1,Math.round(p*fl))+".º";},()=>{CUR.stage="flat_door";render();});
-  }else{CUR.stage="flat_door";render();}}
-function doorbell(){if(!CUR||!["door","flat_door"].includes(CUR.stage))return;snd("doorbell");CUR.stage="bell_wait";const s=bellWaitSec();CUR.bellSec=s;render();
-  timer(F().instant?150:clamp(s*85,700,2700),p=>{const b=$("wBar");if(b)b.style.width=Math.round(p*100)+"%";const c=$("wClk");if(c)c.textContent=Math.round(p*s)+" s";},()=>{
-    if(CUR.willAnswer){CUR.stage="conv";const t=openLine(false);const icT=CUR.icSec?` (portero ${CUR.icSec} s)`:"";
-      CUR.log=[{who:`${CUR.rcp.name} · abre tras ${s} s${icT}`,cls:isFlirt(CUR.rcp)?"flirt":"",txt:t}];say(t);}else{CUR.stage="nohome";snd("bad");}render();});}
+  const fl=CUR.housing.floor||3;
+  if(CUR.housing.lift){CUR.stage="lift_wait";render();startWait("lift",liftSec(fl));}
+  else{CUR.stage="stairs_wait";render();startWait("stairs",stairsSec(fl));}}
+function doorbell(){if(!CUR||!["door","flat_door"].includes(CUR.stage))return;snd("doorbell");CUR.stage="bell_wait";const s=bellWaitSec();CUR.bellSec=s;render();startWait("bell",s);}
 
 // ---------- Conversación (sugerente nunca explícita; comida fría/caliente) ----------
 function openLine(bajando){const {rcp,housing,ts,isRepeat,pkg,type,cold}=CUR,P=[];const lr=rcp.last||{};
@@ -550,7 +581,7 @@ function openLine(bajando){const {rcp,housing,ts,isRepeat,pkg,type,cold}=CUR,P=[
     if(type==="comida"&&cold)P.push(rcp.ch.k==="seco"||rcp.ch.k==="exigente"?"«Oye, ha tardado bastante… viene la bolsa casi fría.»":"«Uy, viene un poco templado… bueno, qué le vamos a hacer.»");
     if(!isPisoH(housing)&&housing.garden&&rcp.dog==="suelto")P.push("«Tranquila por el perro del jardín, ladra mucho pero es un trozo de pan.»");
     else if(rcp.dog!=="no")P.push("«¡Quieto! Perdona al perro, se emociona con el timbre.»");
-    if(housing.kind==="piso_sin_asc"&&!bajando)P.push(`«Madre mía, has subido hasta el ${housing.floor}.º sin ascensor${pkg.size==="bulto"?" con ese bulto":""}…»`);
+    if(housing.kind==="piso_sin_asc"&&!bajando)P.push(`«Madre mía, has subido hasta el ${housing.floor}.º sin ascensor${pkg.size==="bulto"?" con esa caja del baúl":""}…»`);
     if(S.rain&&Math.random()<.6)P.push("«¡Con la que está cayendo! Pasa un segundo, que te mojas.»");
     if(rcp.g==="m"){P.push({nervioso:"«Eh… sí, soy yo… perdona las pintas, no esperaba… bueno, ¿qué hago?»",cumplido:"«Oye, da gusto abrir la puerta y encontrarse esa sonrisa.»",
       ligon_suave:type==="comida"?"«¿Siempre repartes tú por aquí? Voy a pedir cena todos los días…»":"«¿Siempre haces tú esta zona? Porque voy a pedir paquetes todas las semanas…»",
@@ -568,7 +599,7 @@ function reply(ch){const {rcp,type,cold}=CUR,fl=isFlirt(rcp);CUR.alba=ch;let a,c
   render();}
 function afterConv(){
   if(CUR.type==="recogida"){if(CUR.pkg.dni&&!CUR.dniOk){CUR.stage="dni";return render();}
-    CUR.puDone=false;CUR.stage="ready_ret";mapShow(CUR);toast("Devolución recogida: llévala a la nave");return render();}
+    CUR.puDone=true;toast("Devolución recogida: llévala a la nave");beginLeg(false);return;}
   if(CUR.pkg.cod>0&&!CUR.codDone){CUR.stage="cod";return render();}
   if(CUR.pkg.dni){CUR.stage="dni";return render();}
   finish("entregado");}
@@ -588,7 +619,7 @@ function finish(out,extra){if(!CUR)return;clearInterval(WT);CUR.out=out;CUR.extr
     {vecino:`Al vecino (${extra})`,porteria:"En portería",buzon:"En el buzón",pudo:"Depositado en punto de recogida",recogido:"Devolución entregada en nave",ausente:CUR.attempt>1?"Ausente 2.º intento":"Ausente: aviso y 2.º intento mañana",devuelto:"Devuelto al remitente",rechazado:"Rechazado por el cliente",noentrega:"Dirección incompleta: no entregado"}[out]||out;
   if(out==="ausente"&&CUR.attempt===1&&type!=="comida")S.retries.push({place:CUR.place,housing:CUR.housing,rcp:CUR.rcp,pkg:CUR.pkg,co:CUR.co,type:CUR.type==="urgente"?"normal":CUR.type,addr:CUR.addr,dest:CUR.dest,attempt:2,day:S.day+1});
   if(["vecino","porteria","buzon"].includes(out)&&type!=="comida"&&(F().claim||(!F().noClaim&&Math.random()<.35)))S.claims.push({name:rcp.name,nom:rcp.nom,out,extra,co:CUR.co,day:S.day,id:rcp.id});
-  S.clock+=out==="entregado"?rndI(3,6):2;
+  commitLiveClock();
   const e={ts:Date.now(),day:S.day,hh:hm(S.clock),co:CUR.co,type:CUR.type,attempt:CUR.attempt,name:rcp.name,id:rcp.id,pu:CUR.pu?CUR.pu.line:"",place:CUR.type==="pudo"?CUR.pudo.n:CUR.addr?CUR.addr.line:CUR.place.n,town:CUR.place.t||CUR.place.n,zone:S.zone,
     housing:CUR.type==="pudo"?"Punto de recogida":housing.label,out,pay,tip,cod:out==="entregado"?pkg.cod:0,km:r2(CUR.totalKm),rate,review:CUR.review,note:CUR.note};
   S.history.unshift(e);if(S.history.length>600)S.history.length=600;CUR.entry=e;
@@ -651,7 +682,7 @@ function render(){hdrUI();
         save();toast(t);snd(ok?"ok":"bad");sideUI();render();};
       $("bClFoto").onclick=()=>res(true,"Reclamación resuelta: el cliente ya lo tiene");$("bClCall").onclick=()=>res(true,"Le explicas dónde está. ¡Resuelto!");$("bClIgn").onclick=()=>res(false,"Reclamación sin resolver: baja la valoración");return;}
     const due=S.retries.filter(r=>r.day<=S.day).length,later=S.retries.filter(r=>r.day>S.day).length;
-    card(`<div class="sec"><h2><span>🚐 ALBA está libre</span></h2><div class="sub">Pulsa para recibir el siguiente ${S.mode==="comida"?"pedido de comida":S.mode==="paqueteria"?"paquete":"paquete o pedido"} (uno cada vez).${later?` Tienes ${later} 2.º intento(s) para mañana: pulsa «Nuevo día» en Hoy.`:""}${due?` Hay ${due} 2.º intento(s) para hoy.`:""}</div>
+    card(`<div class="sec"><h2><span>🏍️ ALBA está libre</span></h2><div class="sub">Pulsa para recibir el siguiente ${S.mode==="comida"?"pedido de comida":S.mode==="paqueteria"?"paquete":"paquete o pedido"} (uno cada vez). ALBA reparte en moto.${later?` Tienes ${later} 2.º intento(s) para mañana: pulsa «Nuevo día» en Hoy.`:""}${due?` Hay ${due} 2.º intento(s) para hoy.`:""}</div>
       <div class="acts"><button class="btn b-pri" id="bFind">${S.mode==="comida"?"🍔 Buscar pedido":"📦 Buscar encargo"}</button></div></div>`);$("bFind").onclick=async()=>{$("bFind").disabled=true;$("bFind").textContent="Buscando…";await makeOffer();};return;}
   const st=CUR.stage,h=CUR.housing;let body="";
   const btn=(id,cls,t,dis)=>`<button class="btn ${cls}" id="${id}"${dis?" disabled":""}>${t}</button>`;
@@ -659,35 +690,37 @@ function render(){hdrUI();
     <div class="kv"><span>Recorrido total (2 tramos)</span><span>${num1(CUR.totalKm)} km · ${Math.round(CUR.totalMin)} min</span></div>${pkgHTML()}${CUR.type!=="pudo"?rcpHTML(false):""}
     <div class="row2">${btn("bRej","b-sec","✖ Rechazar")}${btn("bAcc","b-pri","✅ Aceptar")}</div></div>`;
   else{const top=`<div class="sec"><h2><span>${TYPES[CUR.type].ic} ${esc(CUR.rcp.name)}</span>${coTag(CUR.co)}</h2><div class="tags" style="margin-top:0">${typeTags()}</div>${legsHTML()}${pkgHTML()}</div>`;let a="";
-    if(st==="ready_pu")a=`<div class="sub">Tramo 1 (hacia la recogida): ${num1(CUR.R1.km)} km · ${Math.round(CUR.R1.min)} min.</div><div class="acts">${btn("bGoPu","b-pri","🚐 Salir hacia la recogida")}</div>`;
-    else if(st==="driving_pu")a=`<div class="sub">🚐 Camino a la recogida… <b id="drvLeft"></b></div><div class="bar"><i id="drvBar" style="width:${Math.round((CUR.prog||0)*100)}%"></i></div>
-      <div class="acts">${btn("bArrPu","b-pri",CUR.type==="comida"?"📍 He llegado al restaurante":"📍 He llegado a la recogida",!CUR.arrivedReady)}</div>`;
-    else if(st==="food_prep")a=`<div class="waitbox">🍳 ${esc(CUR.prepLine)}<div class="t" id="wClk">0 s</div><div class="bar"><i id="wBar"></i></div></div>`;
+    if(st==="leg_pu"||st==="ready_pu"||st==="driving_pu")a=`<div class="sub">Mapa de referencia · ${num1(CUR.R1.km)} km · unos ${Math.round(CUR.R1.min)} min. El trayecto lo haces tú (en moto).</div>
+      <div class="acts">${btn("bArrPu","b-pri",arrPuLabel())}</div>`;
+    else if(st==="food_prep")a=`<div class="waitbox">🍳 ${esc(CUR.prepLine)}<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
+    else if(st==="handle_pu")a=`<div class="waitbox">📦 Dejando el pedido en el baúl de la moto…<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
     else if(st==="pickup")a=`<div class="dlg"><div class="who">${esc(CUR.pu.name)} · simulado</div>${esc(CUR.puLine)}</div>
-      <div class="sub">Tramo 2 (hacia el cliente): ${num1(CUR.R2.km)} km · ${Math.round(CUR.R2.min)} min.</div>
-      <div class="acts">${btn("bGoDel","b-pri",CUR.type==="comida"?"🛍️ Recoger comida y salir hacia el cliente":"📦 Cargar paquete y salir hacia la entrega")}</div>`;
-    else if(st==="ready_ret")a=`<div class="sub">Devolución recogida. Ahora toca llevarla a ${esc(CUR.pudo.n)} (${num1(CUR.R2.km)} km).</div><div class="acts">${btn("bGoDel","b-pri","🚐 Salir hacia la nave")}</div>`;
-    else if(st==="driving")a=`<div class="sub">🚐 En camino hacia la entrega… <b id="drvLeft"></b></div><div class="bar"><i id="drvBar" style="width:${Math.round((CUR.prog||0)*100)}%"></i></div>
+      <div class="sub">Siguiente tramo (referencia): ${num1(CUR.R2.km)} km · unos ${Math.round(CUR.R2.min)} min. El trayecto lo haces tú.</div>
+      <div class="acts">${btn("bArr","b-pri",arrDelLabel())}</div>`;
+    else if(st==="ready_ret"||st==="leg_del"||st==="driving")a=`${CUR.puLine?`<div class="dlg"><div class="who">${esc(CUR.pu.name)} · simulado</div>${esc(CUR.puLine)}</div>`:""}<div class="sub">${CUR.type==="recogida"?`Llévalo a ${esc(CUR.pudo.n)} · `:""}Mapa de referencia · ${num1(CUR.R2.km)} km · unos ${Math.round(CUR.R2.min)} min. El trayecto lo haces tú (en moto).</div>
       ${CUR.msgShown?`<div class="dlg msg"><div class="who">💬 Mensaje de ${esc(CUR.rcp.nom)} · simulado</div>${esc(MSG_TXT[CUR.msg])}</div>`:""}
-      <div class="acts">${btn("bArr","b-pri","📍 He llegado",!CUR.arrivedReady)}</div>`;
-    else if(st==="pudo")a=`<div class="dlg"><div class="who">${CUR.type==="recogida"?"🏭 Nave de paquetería":"🏪 Punto de recogida"} · simulado</div>${CUR.type==="recogida"?"Escaneas la devolución y la dejas registrada en la nave.":"Escaneas el paquete y lo dejas en el punto. El cliente recibirá su código."}</div><div class="acts">${btn("bPudo","b-pri",CUR.type==="recogida"?"📦 Registrar devolución en nave":"📲 Escanear y depositar")}</div>`;
-    else if(st==="cita_early")a=`<div class="dlg warn"><div class="who">🗓️ Llegas antes de la cita</div>Son las ${hm(S.clock)} y la franja empieza a las ${hm(CUR.win[0])}.</div><div class="acts">${btn("bCitaW","b-blue",`⏳ Esperar hasta las ${hm(CUR.win[0])}`)}${btn("bCitaTry","b-sec","🔔 Probar a entregar ya")}</div>`;
+      <div class="acts">${btn("bArr","b-pri",arrDelLabel())}</div>`;
+        else if(st==="pudo")a=`<div class="dlg"><div class="who">${CUR.type==="recogida"?"🏭 Nave de paquetería":"🏪 Punto de recogida"} · simulado</div>${CUR.type==="recogida"?"Escaneas la devolución y la dejas registrada en la nave.":"Escaneas el paquete y lo dejas en el punto. El cliente recibirá su código."}</div><div class="acts">${btn("bPudo","b-pri",CUR.type==="recogida"?"📦 Registrar devolución en nave":"📲 Escanear y depositar")}</div>`;
+    else if(st==="cita_early")a=`<div class="dlg warn"><div class="who">🗓️ Llegas antes de la cita</div>Son las ${hm(clockNow())} y la franja empieza a las ${hm(CUR.win[0])}.</div><div class="acts">${btn("bCitaW","b-blue",`⏳ Esperar hasta las ${hm(CUR.win[0])}`)}${btn("bCitaTry","b-sec","🔔 Probar a entregar ya")}</div>`;
     else if(st==="addr")a=`<div class="dlg warn"><div class="who">⚠️ Incidencia: dirección incompleta · simulado</div>En el pedido falta el piso o la puerta. Hay muchos buzones…</div><div class="acts">${btn("bAddrCall","b-blue","📞 Llamar al cliente")}${btn("bAddrNo","b-bad","↩️ No entregar (incidencia)")}</div>`;
     else if(st==="wait5")a=`<div class="dlg msg"><div class="who">💬 ${esc(CUR.rcp.nom)}</div>${esc(MSG_TXT.espera5)}</div><div class="acts">${btn("bW5","b-blue","⏳ Esperar 5 minutos")}${btn("bW5no","b-sec","🔔 No esperar: llamar ya")}</div>`;
+    else if(st==="cita_wait")a=`<div class="waitbox">🗓️ Esperando a la hora de la cita (${hm(CUR.win[0])})…<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
+    else if(st==="wait5_run")a=`<div class="waitbox">⏳ Esperando 5 minutos, como pidió ${esc(CUR.rcp.nom)}…<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
     else if(st==="porter_msg")a=`<div class="dlg msg"><div class="who">💬 ${esc(CUR.rcp.nom)}</div>${esc(MSG_TXT.porteria)}</div><div class="acts">${btn("bPort","b-pri","🚪 Dejar en portería")}</div>`;
     else if(st==="buzon_msg")a=`<div class="dlg msg"><div class="who">💬 ${esc(CUR.rcp.nom)}</div>${esc(MSG_TXT.buzon)}</div><div class="acts">${btn("bBuz","b-pri","📬 Dejar en el buzón")}</div>`;
     else if(st==="door"){
       if(isPisoH(h))a=`<div class="sub">Estás en el portal (${esc(h.label)}). Primero llama al portero automático.</div><div class="acts">${btn("bIc","b-blue","📞 Portero automático")}</div>`;
       else a=`${h.garden?`<div class="sub">🏡 ${esc(h.fl)}.</div>`:""}${h.looseDog?`<div class="dlg warn"><div class="who">🐕 Perro en el jardín · simulado</div>Un perro ladra detrás de la ${h.gate?"verja":"puerta"}.</div>`:""}<div class="sub">Vivienda unifamiliar (sin portero automático).</div><div class="acts">${btn("bBell","b-pri",h.gate?"🔔 Timbre de la verja / portón":"🔔 Timbre de la puerta")}</div>`;}
-    else if(st==="ic_wait")a=`<div class="waitbox">📞 Llamando al portero automático…<div class="t" id="wClk">0 s</div><div class="bar"><i id="wBar"></i></div></div>`;
+    else if(st==="ic_wait")a=`<div class="waitbox">📞 Llamando al portero automático…<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
     else if(st==="ic_ask")a=`<div class="dlg"><div class="who">📞 Portero automático (tras ${CUR.icSec} s) · simulado</div>${esc(CUR.icMsg)}</div><div class="acts">${btn("bIcSay","b-pri",CUR.type==="comida"?"🗣️ «¡Buenas, reparto de comida!»":"🗣️ «¡Buenas, paquetería!»")}</div>`;
     else if(st==="porter")a=`<div class="dlg"><div class="who">👮 Conserje · simulado</div>${esc(CUR.icMsg)}</div><div class="acts">${btn("bPort","b-pri","🚪 Dejar en portería")}${btn("bUp","b-blue",`🛗 Subir en ascensor al ${h.floor}.º`)}</div>`;
     else if(st==="building_up")a=`<div class="dlg"><div class="who">📞 Portero automático (abierto tras ${CUR.icSec} s) · simulado</div>${esc(CUR.icMsg)}</div>
       ${h.lift?`<div class="sub">🛗 El edificio <b>tiene ascensor</b>. Toca subir hasta el ${h.floor}.º.</div><div class="acts">${btn("bUp","b-blue",`🛗 Subir en ascensor al ${h.floor}.º`)}</div>`:
       `<div class="dlg warn"><div class="who">🪜 Sin ascensor</div>Edificio antiguo sin ascensor: toca subir andando hasta el <b>${h.floor}.º</b>.</div><div class="acts">${btn("bUp","b-warn",`🪜 Subir por las escaleras al ${h.floor}.º`)}</div>`}`;
-    else if(st==="lift_wait")a=`<div class="waitbox">🛗 Subiendo en ascensor…<div class="t" id="wClk">1.º</div><div class="bar"><i id="wBar"></i></div></div>`;
+    else if(st==="lift_wait")a=`<div class="waitbox">🛗 Subiendo en ascensor…<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
+    else if(st==="stairs_wait")a=`<div class="waitbox">🪜 Subiendo las escaleras (${esc(String(h.floor))}.º)…<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
     else if(st==="flat_door")a=`<div class="sub">Estás delante de la puerta del piso (${esc(h.fl)}). Toca el timbre.</div><div class="acts">${btn("bBell","b-pri","🔔 Timbre del piso")}</div>`;
-    else if(st==="bell_wait")a=`<div class="waitbox">🔔 Esperando en la puerta… (cada persona tarda distinto)<div class="t" id="wClk">0 s</div><div class="bar"><i id="wBar"></i></div></div>`;
+    else if(st==="bell_wait")a=`<div class="waitbox">🔔 Esperando en la puerta… (tiempo real)<div class="t" id="wClk">${fmtMMSS(waitLeft())}</div><div class="bar"><i id="wBar"></i></div></div>`;
     else if(st==="nohome")a=`<div class="dlg warn"><div class="who">🚪 No abre nadie${CUR.bellSec?" (tras "+CUR.bellSec+" s)":""}</div>¿Qué haces?</div><div class="acts">
       ${CUR.type!=="recogida"&&CUR.type!=="comida"&&!CUR.pkg.cod?btn("bNeigh","b-blue","🏘️ Probar con un vecino"):""}${h.porter&&CUR.type!=="recogida"?btn("bPort","b-sec","🚪 Dejar en portería"):""}
       ${CUR.pkg.size==="sobre"&&!CUR.pkg.cod&&!CUR.pkg.dni&&CUR.type!=="recogida"?btn("bBuz","b-sec","📬 Dejar en el buzón"):""}
@@ -713,13 +746,13 @@ function render(){hdrUI();
   card(body);bind();}
 
 function bind(){const b=(id,fn)=>{const e=$(id);if(e)e.onclick=fn;};
-  b("bAcc",accept);b("bRej",reject);b("bGoPu",()=>driveLeg(CUR.R1,true));b("bArrPu",arrivePickup);b("bGoDel",departDelivery);b("bArr",arriveDelivery);
+  b("bAcc",accept);b("bRej",reject);b("bArrPu",arrivePickup);b("bArr",arriveDelivery);
   b("bIc",intercom);b("bIcSay",replyIntercom);b("bUp",goUp);b("bBell",doorbell);
   b("bPudo",()=>finish(CUR.type==="recogida"?"recogido":"pudo"));
-  b("bCitaW",()=>{S.clock=CUR.win[0];hdrUI();toast("Esperas hasta la hora de la cita");startDoor();});b("bCitaTry",()=>{CUR.willAnswer=CUR.willAnswer&&Math.random()<.6;startDoor();});
+  b("bCitaW",()=>{const sec=Math.max(5,Math.round((CUR.win[0]-clockNow())*60));CUR.stage="cita_wait";render();startWait("cita",sec);});b("bCitaTry",()=>{CUR.willAnswer=CUR.willAnswer&&Math.random()<.6;startDoor();});
   b("bAddrCall",()=>{CUR.incDone=true;CUR.inc="direccion";const ok=F().addrOk!=null?F().addrOk:Math.random()<.75;if(ok){CUR.log=[];toast(`${CUR.rcp.nom}: «¡Perdona! Es el ${CUR.housing.floor?CUR.housing.floor+".º":"bajo"}.»`);startDoor();}else{toast("No contesta al teléfono");finish("noentrega");}});
   b("bAddrNo",()=>finish("noentrega"));
-  b("bW5",()=>{S.clock+=5;hdrUI();CUR.willAnswer=true;CUR.msg=null;toast("Esperas 5 minutos…");CUR.stage="door";render();});b("bW5no",()=>{CUR.msg=null;CUR.willAnswer=Math.random()<.4;CUR.stage="door";render();});
+  b("bW5",()=>{CUR.stage="wait5_run";render();startWait("wait5",300);});b("bW5no",()=>{CUR.msg=null;CUR.willAnswer=Math.random()<.4;CUR.stage="door";render();});
   b("bPort",()=>finish("porteria"));b("bBuz",()=>finish("buzon"));b("bAbs",()=>finish("ausente"));b("bRet",()=>finish("devuelto"));
   b("bNeigh",()=>{CUR.neigh=neighbour(false);CUR.stage="neigh";say(CUR.neigh.txt);render();});b("bGiveN",()=>finish("vecino",CUR.neigh.name+", "+CUR.neigh.fl));
   b("rP",()=>reply("profesional"));b("rS",()=>reply("simpatica"));b("rC",()=>reply("cortar"));b("bNext",afterConv);
@@ -728,7 +761,7 @@ function bind(){const b=(id,fn)=>{const e=$(id);if(e)e.onclick=fn;};
   const cod=t=>{CUR.codDone=true;snd("cash");toast(t);if(CUR.pkg.dni){CUR.stage="dni";render();}else finish("entregado");};
   b("bCodX",()=>cod(`Cobrado ${eur(CUR.pkg.cod)}`));b("bCodCh",()=>cod("Le das el cambio"));b("bCodCard",()=>cod("Pago con datáfono aceptado (sim.)"));b("bCodKeep",()=>cod("«Vale, vale…» Paga el importe exacto"));
   b("bDni",()=>{CUR.dniOk=true;snd("ok");const x=$("bDni");x.textContent="✅ DNI comprobado";x.className="btn b-sec b-sm";const s=$("bSignOk");if(s)s.disabled=!(CUR.dniOk&&CUR.signed);});
-  b("bSignOk",()=>{if(CUR.type==="recogida"){CUR.puDone=false;CUR.stage="ready_ret";mapShow(CUR);toast("Devolución recogida: llévala a la nave");render();}else finish("entregado");});
+  b("bSignOk",()=>{if(CUR.type==="recogida"){CUR.puDone=true;toast("Devolución recogida: llévala a la nave");beginLeg(false);}else finish("entregado");});
   b("bNoteOk",()=>{const v=$("inNote").value.trim();if(CUR.entry){CUR.entry.note=v;const g=S.regulars[CUR.rcp.id];if(g)g.lastNote=v;}save();CUR=null;mapClear();sideUI();render();});
   if(CUR&&CUR.stage==="dni")sigInit();}
 
@@ -757,17 +790,18 @@ $("mapSel").value=provIdx;$("mapSel").onchange=e=>setProvider(+e.target.value,fa
 $("selZone").onchange=e=>{if(CUR&&CUR.stage!=="offer"){toast("Termina el reparto antes de cambiar de zona");$("selZone").value=S.zone;return;}S.zone=e.target.value;S.pos=zoneCenter(S.zone);CUR=null;mapClear();mapAlba();if(map)map.setView(S.pos,13);save();zoneUI();render();};
 $("modeSeg").onclick=e=>{const b=e.target.closest("button[data-m]");if(b)syncMode(b.dataset.m);};
 $("selMode").onchange=e=>syncMode(e.target.value);
-$("pRain").onclick=()=>{S.rain=!S.rain;save();hdrUI();toast(S.rain?"🌧️ Lluvia activada (simulada): trayectos algo más lentos":"🌤️ Lluvia desactivada");};
-$("btnNewDay").onclick=()=>{if(CUR&&!["offer","note"].includes(CUR.stage)){toast("Termina el reparto actual primero");return;}S.day++;S.clock=540;CUR=null;mapClear();save();sideUI();render();toast(`🌅 Día ${S.day}: ${S.retries.filter(r=>r.day<=S.day).length} 2.º intento(s) pendientes`);};
+$("pRain").onclick=()=>{S.rain=!S.rain;save();hdrUI();toast(S.rain?"🌧️ Lluvia activada (simulada): la hora límite lo tiene en cuenta":"🌤️ Lluvia desactivada");};
+$("btnNewDay").onclick=()=>{if(CUR&&!["offer","note"].includes(CUR.stage)){toast("Termina el reparto actual primero");return;}commitLiveClock();S.day++;S.clock=540;S.liveAt=null;CUR=null;mapClear();save();sideUI();render();toast(`🌅 Día ${S.day}: ${S.retries.filter(r=>r.day<=S.day).length} 2.º intento(s) pendientes`);};
 $("selTime").onchange=e=>{S.timeMode=e.target.value;save();hdrUI();};
-for(const [id,k] of [["chkSnd","snd"],["chkVoz","voz"],["chkFast","fast"]]){$(id).checked=!!S[k];$(id).onchange=e=>{S[k]=e.target.checked;save();};}
+for(const [id,k] of [["chkSnd","snd"],["chkVoz","voz"]]){$(id).checked=!!S[k];$(id).onchange=e=>{S[k]=e.target.checked;save();};}
 $("btnExp").onclick=()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(Object.assign({},S,{cur:null}),null,1)],{type:"application/json"}));a.download=`simulador-paqueteria-dia${S.day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);};
 $("btnImp").onclick=()=>$("fileImp").click();
-$("fileImp").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!p||!Array.isArray(p.history))throw 0;S=Object.assign(S0(),p);S.cur=null;CUR=null;save();zoneUI();syncMode(S.mode);setProvider(S.mapProv||0,true);sideUI();render();mapAlba();toast("Partida importada");}catch(x){toast("Archivo no válido");}};r.readAsText(f);e.target.value="";};
+$("fileImp").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);if(!p||!Array.isArray(p.history))throw 0;S=Object.assign(S0(),p);CUR=S.cur||null;save();zoneUI();syncMode(S.mode);setProvider(S.mapProv||0,true);sideUI();render();mapAlba();if(CUR){mapShow(CUR);resumeWait();startClockTick();}toast("Partida importada");}catch(x){toast("Archivo no válido");}};r.readAsText(f);e.target.value="";};
 $("btnReset").onclick=()=>{if(!confirm("¿Borrar toda la partida del Simulador Paquetería?"))return;S=S0();S.pos=zoneCenter(S.zone);CUR=null;mapClear();save();zoneUI();syncMode(S.mode);setProvider(0,true);sideUI();render();mapAlba();};
 $("mTabs").onclick=e=>{const b=e.target.closest("button[data-mt]");if(!b)return;document.body.dataset.tab=b.dataset.mt;document.querySelectorAll("#mTabs button").forEach(x=>x.classList.toggle("on",x===b));if(b.dataset.mt==="reparto"&&map)setTimeout(()=>map.invalidateSize(),50);window.scrollTo(0,0);};
 $("selTime").value=S.timeMode;zoneUI();syncMode(S.mode);sideUI();render();mapAlba();
-window.PQ={S:()=>S,CUR:()=>CUR,makeOffer,route,icWaitSec,bellWaitSec,setProvider,PROVIDERS,DATA,SND_LOG,VOZ_LOG,ver:APP_VER,cuisineKey,FOOD_BY,hideToast};
+if(CUR){try{mapShow(CUR);}catch(e){}resumeWait();startClockTick();}
+window.PQ={S:()=>S,CUR:()=>CUR,makeOffer,route,icWaitSec,bellWaitSec,setProvider,PROVIDERS,DATA,SND_LOG,VOZ_LOG,ver:APP_VER,cuisineKey,FOOD_BY,hideToast,testSpeed,clockNow,fmtMMSS,waitLeft};
 </script>
 </body>
 </html>
